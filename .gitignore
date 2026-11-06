@@ -1,0 +1,34 @@
+# ===== Java / Maven =====
+backend/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+backend/logs/
+*.log
+
+# ===== Node / 前端 =====
+frontend/node_modules/
+frontend/dist/
+*.local
+npm-debug.log*
+pnpm-debug.log*
+
+# ===== 敏感配置（不入库） =====
+**/application-local.yaml
+**/application-local.yml
+.env
+.env.*
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 运行时数据 =====
+uploads/
+*.db
