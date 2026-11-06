@@ -9,8 +9,11 @@
 ## 当前进度
 | 里程碑 | 状态 |
 |---|---|
-| D0 文档定稿包（README/技术设计/API 契约/环境手册/调研/日志/交接/规则） | ✅ 本次完成 |
-| E0 环境准备（Node 22、Redis 安装；建库 notehub + schema/seed.sql） | ⏳ 下一步 |
+| D0 文档定稿包（README/技术设计/API 契约/环境手册/调研/日志/交接/规则） | ✅ commit 303e1ac |
+| E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
+| E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
+| E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
+| E0-4 Docker 路线跑 Redis | 🔄 进行中：安装包已下好（E:\docker\DockerDesktopInstaller.exe 595MB）；WSL2 启用命令已提权执行中；重启后跑 E:\docker\install-docker-admin.cmd |
 | 阶段 1 编码（基础设施→用户→题库→笔记→互动→消息→管理端→前端两端） | 未开始 |
 | 阶段 2 迭代（I1 搜索 … I6 AI 拓展） | 未开始 |
 
@@ -37,6 +40,18 @@
 - JDK 21.0.12 → E:\jdk 21 ｜ Maven 3.9.11 → E:\Maven ｜ MySQL 8.0.41 → C:\Program Files（服务 MySQL80）
 - Node.js：未装（计划 E:\nodejs）｜ Redis：未装（计划 E:\redis）
 - 用户密码备忘在 E:\ka\新建 文本文档.txt（仓库外，不入库）
+
+## 环境踩坑记录（E0 实测）
+- Node 的 zip 用 Git Bash 的 GNU tar 解不开（"does not look like a tar archive"），要用 PowerShell `Expand-Archive`
+- GitHub 直连下载会中断（exit 56）；nodejs.org/desktop.docker.com 直连正常
+- `setx` 截断风险 → 配 PATH 用 PowerShell `[Environment]::SetEnvironmentVariable(...,'User')`
+- `rank` 是 MySQL8 保留字 → 列名用 `sort_rank`
+- 本机 shell 默认非管理员 → 提权走 `Start-Process -Verb RunAs`（用户点 UAC）
+- WSL/VMware 类提示输出是 UTF-16LE，`iconv -f UTF-16LE -t UTF-8` 转码可读
+
+## 重启后的 Docker 安装步骤（重启 WSL2 生效后）
+1. 以管理员身份运行 `E:\docker\install-docker-admin.cmd`（装 Docker Desktop → E:\docker、启动引擎、起 notehub-redis 容器，全自动）
+2. 验证：`E:\docker\Docker Desktop\resources\bin\docker.exe exec notehub-redis redis-cli ping` → PONG
 
 ## 相关资产
 - 原项目逆向分析：E:\ka\kamanotes-分析报告.md ｜ 原源码：E:\ka\kamanotes\

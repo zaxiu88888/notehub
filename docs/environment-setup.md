@@ -27,12 +27,23 @@ sc query MySQL80                       # 服务存在且 RUNNING
 4. 验证（新开终端）：`node -v` → v22.x；`npm -v`
 5. 镜像已配好：`C:\Users\11733\.npmrc` → registry.npmmirror.com
 
-## 3. Redis 安装（后端必需）
+## 3. Redis（Docker 方案，实际采用）
 
-1. 下载 Windows 版（https://github.com/tporadowski/redis/releases 的 `Redis-x64-5.0.14.1.zip`；或用 Docker：`docker run -d -p 6379:6379 redis:7-alpine`）
-2. 解压到 `E:\redis`
-3. 启动：`E:\redis\redis-server.exe redis.windows.conf`（窗口保持开启）
-4. 验证：`E:\redis\redis-cli.exe ping` → PONG
+> 决策记录：用户选 Docker 路线（放弃 zip 版）。WSL2 需先启用（一次性，管理员 + 重启）。
+
+一次性准备（已完成/执行顺序）：
+1. **启用 WSL2**（管理员）：`wsl --install --no-distribution` → **重启电脑**
+2. **安装 Docker Desktop**（管理员）：直接运行 `E:\docker\install-docker-admin.cmd` —— 脚本自动完成：安装到 `E:\docker`（`--installation-dir`）→ 启动引擎 → `docker run -d --name notehub-redis -p 6379:6379 --restart unless-stopped redis:7-alpine`
+3. 验证：
+```bash
+"E:\docker\Docker Desktop\resources\bin\docker.exe" exec notehub-redis redis-cli ping   # PONG
+# 连接串(后端配置): redis://localhost:6379
+```
+
+镜像加速（拉 redis 镜像慢时配置）：Docker Desktop → Settings → Docker Engine 加
+```json
+"registry-mirrors": ["https://docker.m.daocloud.io", "https://dockerproxy.net"]
+```
 
 ## 4. 数据库初始化
 
@@ -80,6 +91,8 @@ cd frontend && npm install && npm run dev
 |---|---|
 | mysql 不是内部命令 | 用绝对路径 `C:\Program Files\MySQL\...\bin\mysql.exe` |
 | node 不生效 | 新开终端（setx 不影响已开窗口） |
-| 后端连不上 Redis | 确认 redis-server 窗口开着、6379 未被占用 |
+| Docker 引擎起不来 | 先确认 WSL2 已启用（`wsl --status`）；MuMu 模拟器与 Hyper-V 冲突时开 MuMu 设置里的兼容模式 |
+| 拉镜像超时 | 配 registry-mirrors（见 §3） |
+| 后端连不上 Redis | `docker ps` 看 notehub-redis 是否 Up；端口 6379 是否被占 |
 | 邮件发送失败 | 授权码是否用「授权码」而非 QQ 密码；465 SSL 是否开启 |
 | 8080 被占用 | `netstat -ano | findstr 8080` 找 PID 结束，或改 server.port |
