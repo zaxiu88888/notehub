@@ -4,6 +4,32 @@
 
 ---
 
+## [M1] 2026-11-07 ｜ 用户模块（注册/登录/验证码/资料/管理端用户管理）
+
+**做了什么**
+- Mapper 层：UserMapper + XML（selectByAccount/Email/Id、insert、updateProfile 动态 set、updateLastLoginAt、updateBanned、管理端分页 count/list；列表 SQL 用 publicColumns 不查 password）
+- DTO/VO：RegisterRequest（@Valid 邮箱/验证码/账号/密码校验）、LoginRequest、UpdateUserRequest（account/email/password 不可改）、UserQueryParam、UserVO（本人视角全量/公开视角脱敏）、LoginUserVO{userId,token}
+- 邮件模块：RedisService 抽象+Impl（薄封装便于 mock）、RedisKey 常量、EmailTask、EmailServiceImpl（60s 限流 setIfAbsent / dev 开关直接落 Redis 并返回 devCode / 真发模式任务 JSON 入 Redis 队列）、EmailTaskConsumer（3s 轮询 RPOP 投递，坏 JSON/发送失败不中断循环）、EmailController（GET /api/email/verify-code）
+- 用户模块：UserServiceImpl（注册=验证码一次性消费+双唯一校验+BCrypt+签发 token；登录=BCrypt+封禁拦截+刷新 last_login_at，错误文案统一防账号枚举；whoami 全量/公开主页脱敏 account+email；资料更新；管理端列表分页收敛 1~50；封禁）、UserController（8 个接口全落地，构造器注入）
+- 鉴权增强：TokenInterceptor 接入 users 表——isAdmin 实时判定（降权即时生效）、封禁用户按匿名处理；ErrorCode 新增 LOGIN_FAILED(40103)，technical-design §7 同步
+
+**测试门**
+- `mvn test`：**Tests run: 36, Failures: 0, Errors: 0 — BUILD SUCCESS**（新增 22 个：UserServiceImplTest 11 / EmailServiceImplTest 7 / EmailTaskConsumerTest 4）
+
+**自审门（diff 自审清单）**
+- ✅ 真实缺陷修复：UpdateUserRequest 全空 → MyBatis `<set>` 空片段 → SQL 语法错误；service 层短路直接返回
+- ✅ 修复：EmailServiceImpl 误 import UserVO；deliver 方法跨包不可见 → 提升为接口方法 deliverTask
+- ✅ 修复：pom 漏掉 spring-boot-starter-mail（MimeMessage 类缺失）
+- ✅ 修复：UserController 初版写乱（双构造器）→ 重写为单构造器注入
+- ✅ 测试侧修正 3 处：公开主页断言字段用错 / mock 下 whoami 重读旧数据 / never() 与前序 verify 矛盾
+- ⚠️ 已知限制（I5 硬化清单）：① TokenInterceptor 每次认证请求 1 次 DB 查询（规模上来后加缓存）② 注册并发同账号依赖 DB 唯一键兜底（DuplicateKeyException → 500，可转 40901）③ 邮件发送失败不回队（用户重发即可）
+**commit**：（本次提交）
+**遗留问题**
+1. Docker（重启后 install-docker-admin.cmd）与 SMTP 授权码仍待用户提供
+2. application-local.yaml 用户尚未创建（启动前置）
+
+---
+
 ## [M0] 2026-11-07 ｜ 后端骨架（Spring Boot 3.5.16 + JWT 鉴权链路）
 
 **做了什么**

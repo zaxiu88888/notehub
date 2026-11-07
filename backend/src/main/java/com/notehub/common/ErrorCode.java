@@ -16,6 +16,7 @@ public enum ErrorCode {
     /** 认证与权限 */
     UNAUTHORIZED(40101, "用户未登录"),
     ADMIN_REQUIRED(40102, "需要管理员权限"),
+    LOGIN_FAILED(40103, "账号或密码错误"),
     FORBIDDEN(40301, "无权操作该资源"),
 
     /** 资源 */

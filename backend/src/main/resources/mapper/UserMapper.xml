@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.UserMapper">
+
+    <sql id="baseColumns">
+        user_id, account, username, password, email, gender, birthday, avatar_url,
+        school, signature, is_banned, is_admin, last_login_at, created_at, updated_at
+    </sql>
+
+    <sql id="publicColumns">
+        user_id, account, username, email, gender, birthday, avatar_url,
+        school, signature, is_banned, is_admin, last_login_at, created_at, updated_at
+    </sql>
+
+    <select id="selectById" resultType="com.notehub.model.entity.User">
+        SELECT <include refid="baseColumns"/>
+        FROM users
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectByAccount" resultType="com.notehub.model.entity.User">
+        SELECT <include refid="baseColumns"/>
+        FROM users
+        WHERE account = #{account}
+    </select>
+
+    <select id="selectByEmail" resultType="com.notehub.model.entity.User">
+        SELECT <include refid="baseColumns"/>
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="userId" keyColumn="user_id">
+        INSERT INTO users (account, username, password, email, gender, is_banned, is_admin)
+        VALUES (#{account}, #{username}, #{password}, #{email},
+                COALESCE(#{gender}, 0), 0, 0)
+    </insert>
+
+    <update id="updateProfile">
+        UPDATE users
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="birthday != null">birthday = #{birthday},</if>
+            <if test="school != null">school = #{school},</if>
+            <if test="signature != null">signature = #{signature},</if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateLastLoginAt">
+        UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateBanned">
+        UPDATE users SET is_banned = #{isBanned} WHERE user_id = #{userId}
+    </update>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        <where>
+            <if test="param.account != null and param.account != ''">
+                AND account LIKE CONCAT('%', #{param.account}, '%')
+            </if>
+            <if test="param.banned != null">
+                AND is_banned = #{param.banned}
+            </if>
+        </where>
+    </select>
+
+    <select id="listByQuery" resultType="com.notehub.model.entity.User">
+        SELECT <include refid="publicColumns"/>
+        FROM users
+        <where>
+            <if test="param.account != null and param.account != ''">
+                AND account LIKE CONCAT('%', #{param.account}, '%')
+            </if>
+            <if test="param.banned != null">
+                AND is_banned = #{param.banned}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

@@ -57,6 +57,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- 邮件: 验证码发送 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- MyBatis + MySQL -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>

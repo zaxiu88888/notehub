@@ -1,0 +1,34 @@
+package com.notehub.mapper;
+
+import com.notehub.model.dto.user.UserQueryParam;
+import com.notehub.model.entity.User;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+
+@Mapper
+public interface UserMapper {
+
+    /** 按 ID 查(鉴权/详情) */
+    User selectById(@Param("userId") Long userId);
+
+    User selectByAccount(@Param("account") String account);
+
+    User selectByEmail(@Param("email") String email);
+
+    int insert(User user);
+
+    /** 修改个人资料(username/gender/birthday/school/signature 可变, account/email/password 不在此列) */
+    int updateProfile(User user);
+
+    int updateLastLoginAt(@Param("userId") Long userId);
+
+    int updateBanned(@Param("userId") Long userId, @Param("isBanned") Integer isBanned);
+
+    /** 管理端: 总数 + 分页列表 */
+    long countByQuery(UserQueryParam param);
+
+    List<User> listByQuery(@Param("param") UserQueryParam param, @Param("offset") int offset,
+                           @Param("limit") int limit);
+}
