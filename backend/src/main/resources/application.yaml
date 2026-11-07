@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: notehub
+  profiles:
+    active: dev
+  # 本地敏感配置(不入库): 复制 application-local-template.yaml 为 application-local.yaml
+  config:
+    import: optional:classpath:application-local.yaml
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+jwt:
+  # 签名密钥必须放 application-local.yaml (≥32字节); 有效期 30 天
+  expiration-seconds: 2592000
+
+mail:
+  verify-code:
+    enabled: false        # dev 开关: false 时验证码写日志不真发; true 走 SMTP
+    expire-seconds: 300   # 验证码有效期 5 分钟
+    limit-seconds: 60     # 发送频率限制
+
+server:
+  port: 8080
+
+upload:
+  path: ./uploads          # 上传目录(相对 backend 运行目录)
+  url-prefix: /images      # 访问前缀(静态映射见 WebConfig)

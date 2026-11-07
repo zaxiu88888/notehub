@@ -13,9 +13,9 @@
 | E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
 | E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
 | E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
-| E0-4 Docker 路线跑 Redis | 🔄 进行中：安装包已下好（E:\docker\DockerDesktopInstaller.exe 595MB）；WSL2 启用命令已提权执行中；重启后跑 E:\docker\install-docker-admin.cmd |
-| 阶段 1 编码（基础设施→用户→题库→笔记→互动→消息→管理端→前端两端） | 未开始 |
-| 阶段 2 迭代（I1 搜索 … I6 AI 拓展） | 未开始 |
+| E0-4 Docker 路线跑 Redis | 🔄 WSL2 已装好；**等用户重启电脑** → 管理员运行 E:\docker\install-docker-admin.cmd |
+| M0 后端骨架（Boot 3.5.16 + common/security/config + JWT 链路 + 14 测试全绿） | ✅ 本次完成 |
+| 阶段 1 编码（M1 用户模块→题库→笔记→互动→消息→管理端→前端两端） | ⏳ 下一步 M1 |
 
 ## 关键决策（不要推翻，除非用户要求）
 1. 技术栈：Spring Boot 3.x + JDK21 + MyBatis(XML) + MySQL8 + Redis + JJWT 0.12；前端 Vite+React18+TS+Antd5+RTK+axios
@@ -29,8 +29,15 @@
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
 
 ## 如何运行
-见 docs/environment-setup.md §6（MySQL80 + Redis → mvn spring-boot:run → npm run dev）。
-当前仓库还没有代码，E0 完成后此节会更新为实际命令。
+- 数据库已就绪：notehub 库 + 14 表 + 种子数据（admin/admin123 管理员、demo/user123456）
+- 后端：`cd backend && mvn spring-boot:run`（首次启动前必须：`cp src/main/resources/application-local-template.yaml src/main/resources/application-local.yaml` 并填 MySQL 密码 + jwt.secret）
+- 测试：`mvn test`（当前 14/14 绿，无需 DB/Redis）
+- Redis 容器：重启电脑后运行 E:\docker\install-docker-admin.cmd（自动装 Docker→E:\docker 并起 notehub-redis）
+- 前端：frontend/ 尚未创建（M5）
+
+## 后端构建注意（本机实测）
+- `JAVA_HOME` 需指向 `E:\jdk 21`；mvn 用 `E:\Maven\apache-maven-3.9.11-bin\apache-maven-3.9.11\bin\mvn.cmd`；仓库 `E:\Maven\mvnrep`
+- 用户全局 settings.xml 的 `<mirror>` 节点损坏（warning），构建直连中央仓库，能用；不建议擅动用户配置
 
 ## 待用户提供
 1. **QQ 邮箱 SMTP 授权码**（M1 用户模块前；没有则先用 mail.enabled=false 的 dev 模式开发）
