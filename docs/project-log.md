@@ -4,6 +4,35 @@
 
 ---
 
+## [M2] 2026-11-08 ｜ 题库模块（分类/题目/题单/条目 + Markdown 批量导入）
+
+**做了什么**
+- 实体/Mapper：Category、Question(联表附带 categoryName)、QuestionList、QuestionListItem(联表附带题目摘要) + 4 份 XML（密码无关表; 列表排序稳定 ORDER BY id/sort_rank）
+- 分类：getCategoryTree 内存建树（顶级保序）；create/update 校验父分类必须是顶级（两级约束）；delete 三重守卫（存在/子分类/题目）
+- 题目：分页列表（联表分类名, 不带题干）、详情（view_count 原子自增 + myNoteId 占位待 M3）、CRUD（分类存在性校验、有笔记拒删）、批量导入（行级解析 + @Transactional + 失败明细）
+- 批量导入解析器 QuestionMarkdownParser：# 标题切块（裸 # 报错、## 视为正文）、难度：简单/中等/困难→1/2/3（中英冒号兼容）、考点分号分隔、缺难度行进 failures
+- 题单：列表（批量 countGroupByListId 填 questionCount）、CRUD（删单连带条目）、条目添加（uk 防重→DUPLICATED/题目存在性）、移除、批量排序（越权排序校验 + 顺序即 1..n）
+- 用户端条目进度：listItems 登录时 selectQuestionIdsWithNote 批量标记 hasMyNote（一条 SQL 防 jurídico N+1）
+- 契约同步：批量导入 body 补 categoryId；排序 body 补 questionListId；技术设计 §2/§5.4 记录 Flexmark→行级解析变更
+
+**测试门**
+- `mvn test`：**Tests run: 56, Failures: 0, Errors: 0 — BUILD SUCCESS**（新增 20 个：解析器 5 / QuestionService 7 / 分类树+题单 8）
+
+**自审门（diff 自审清单）**
+- ✅ 修复：裸 `#` 行 substring 越界 → 标题提取改正则剥离 ^#+\s*
+- ✅ 修复：ApiResponse.ok(String) 重载与 ok(T) 产生二义（Void 端点编译错/语义陷阱）→ 撤销重载，Void 端点统一 ok()
+- ✅ 修复：排序接口初版路径变量绕弯（requireListIdFromItems 抛 UnsupportedOperationException 的烂设计）→ listId 入 body，单端点
+- ✅ 修复：CategoryServiceImpl.delete 残留无效防御块；QuestionListItem 实体误加占位字段
+- ✅ 清理：QuestionMapper.countGroupByCategory 死方法（接口+XML 同删）
+- ✅ 测试侧修正：create 场景 insert 未回填 ID 导致 NPE
+- ⚠️ 已知限制：① 批量导入 DB 级异常整体回滚（校验失败逐条剔除，语义已在技术设计注明）② 详情接口 myNoteId 恒 null（M3 笔记模块回填）
+**commit**：（本次提交）
+**遗留问题**
+1. Docker：已装入 E:\docker（exit 0），引擎需重启后生效 → 用户重启电脑后双击 E:\docker\post-reboot-redis.cmd
+2. application-local.yaml 用户尚未创建（后端启动前置）
+
+---
+
 ## [M1] 2026-11-07 ｜ 用户模块（注册/登录/验证码/资料/管理端用户管理）
 
 **做了什么**

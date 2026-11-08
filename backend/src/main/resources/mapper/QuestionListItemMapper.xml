@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.QuestionListItemMapper">
+
+    <!-- 题单条目: 联表题目, 附带我的笔记存在标记由 service 层批量补充 -->
+    <select id="listByQuestionListId" resultType="com.notehub.model.entity.QuestionListItem">
+        SELECT i.question_list_id, i.question_id, i.sort_rank, i.created_at, i.updated_at,
+               q.title, q.difficulty, q.exam_point, q.view_count, q.category_id,
+               c.name AS category_name
+        FROM question_list_items i
+        JOIN questions q ON i.question_id = q.question_id
+        LEFT JOIN categories c ON q.category_id = c.category_id
+        WHERE i.question_list_id = #{questionListId}
+        ORDER BY i.sort_rank, i.created_at
+    </select>
+
+    <select id="selectOne" resultType="com.notehub.model.entity.QuestionListItem">
+        SELECT question_list_id, question_id, sort_rank, created_at, updated_at
+        FROM question_list_items
+        WHERE question_list_id = #{questionListId} AND question_id = #{questionId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO question_list_items (question_list_id, question_id, sort_rank)
+        VALUES (#{questionListId}, #{questionId},
+                COALESCE(#{sortRank}, (SELECT COALESCE(MAX(sort_rank), 0) + 1
+                                       FROM question_list_items
+                                       WHERE question_list_id = #{questionListId})))
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM question_list_items
+        WHERE question_list_id = #{questionListId} AND question_id = #{questionId}
+    </delete>
+
+    <update id="updateSortRank">
+        UPDATE question_list_items SET sort_rank = #{sortRank}
+        WHERE question_list_id = #{questionListId} AND question_id = #{questionId}
+    </update>
+
+    <delete id="deleteByQuestionListId">
+        DELETE FROM question_list_items WHERE question_list_id = #{questionListId}
+    </delete>
+
+    <select id="countByListId" resultType="long">
+        SELECT COUNT(*) FROM question_list_items WHERE question_list_id = #{questionListId}
+    </select>
+
+    <select id="countGroupByListId" resultType="map">
+        SELECT question_list_id AS questionListId, COUNT(*) AS cnt
+        FROM question_list_items GROUP BY question_list_id
+    </select>
+
+    <select id="selectQuestionIdsWithNote" resultType="long">
+        SELECT DISTINCT question_id FROM notes
+        WHERE author_id = #{userId} AND question_id IN
+        <foreach collection="questionIds" item="qid" open="(" separator="," close=")">
+            #{qid}
+        </foreach>
+    </select>
+</mapper>

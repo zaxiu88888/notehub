@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.QuestionMapper">
+
+    <sql id="columns">
+        q.question_id, q.category_id, q.title, q.description, q.difficulty,
+        q.exam_point, q.view_count, q.created_at, q.updated_at, c.name AS category_name
+    </sql>
+
+    <!-- 列表/详情复用: resultType 用 Question, categoryName 为关联查询附加列 -->
+    <select id="selectById" resultType="com.notehub.model.entity.Question">
+        SELECT <include refid="columns"/>
+        FROM questions q LEFT JOIN categories c ON q.category_id = c.category_id
+        WHERE q.question_id = #{questionId}
+    </select>
+
+    <select id="listByQuery" resultType="com.notehub.model.entity.Question">
+        SELECT <include refid="columns"/>
+        FROM questions q LEFT JOIN categories c ON q.category_id = c.category_id
+        <where>
+            <if test="param.categoryId != null">AND q.category_id = #{param.categoryId}</if>
+            <if test="param.difficulty != null">AND q.difficulty = #{param.difficulty}</if>
+        </where>
+        ORDER BY q.question_id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(*) FROM questions q
+        <where>
+            <if test="param.categoryId != null">AND q.category_id = #{param.categoryId}</if>
+            <if test="param.difficulty != null">AND q.difficulty = #{param.difficulty}</if>
+        </where>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="questionId" keyColumn="question_id">
+        INSERT INTO questions (category_id, title, description, difficulty, exam_point)
+        VALUES (#{categoryId}, #{title}, #{description}, #{difficulty}, #{examPoint})
+    </insert>
+
+    <update id="update">
+        UPDATE questions
+        <set>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="difficulty != null">difficulty = #{difficulty},</if>
+            <if test="examPoint != null">exam_point = #{examPoint},</if>
+        </set>
+        WHERE question_id = #{questionId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM questions WHERE question_id = #{questionId}
+    </delete>
+
+    <update id="incrementViewCount">
+        UPDATE questions SET view_count = view_count + 1 WHERE question_id = #{questionId}
+    </update>
+
+    <select id="countNotesByQuestionId" resultType="long">
+        SELECT COUNT(*) FROM notes WHERE question_id = #{questionId}
+    </select>
+</mapper>

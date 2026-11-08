@@ -63,8 +63,8 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 |---|---|---|---|
 | GET | `/questions` | 🌐 | 列表：categoryId、difficulty、page 分页 |
 | GET | `/questions/{id}` | 🌐 | 详情（浏览数 +1；🔒 附 myNote：我在这道题下的笔记） |
-| POST | `/admin/questions` | 👑 | `{categoryId, title, difficulty(1-3), examPoint}` |
-| POST | `/admin/questions/batch` | 👑 | Markdown 批量导入（见 §7 模板） |
+| POST | `/admin/questions` | 👑 | `{categoryId, title, difficulty(1-3), examPoint?, description?}` |
+| POST | `/admin/questions/batch` | 👑 | `{categoryId, markdown}` Markdown 批量导入（模板见 §7） |
 | PATCH | `/admin/questions/{id}` | 👑 | 同创建字段，均可选 |
 | DELETE | `/admin/questions/{id}` | 👑 | 有笔记的题目拒绝删除 |
 
@@ -78,9 +78,9 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | POST | `/admin/questionlists` | 👑 `{name, type, description}` |
 | PATCH / DELETE | `/admin/questionlists/{id}` | 👑 |
 | GET | `/admin/questionlist-items/{listId}` | 👑 |
-| POST | `/admin/questionlist-items` | 👑 `{questionListId, questionId}`（uk 防重） |
+| POST | `/admin/questionlist-items` | 👑 `{questionListId, questionId, sortRank?}`（uk 防重，不传 rank 追加末尾） |
 | DELETE | `/admin/questionlist-items/{listId}/{questionId}` | 👑 |
-| PATCH | `/admin/questionlist-items/sort` | 👑 `{items:[{questionId, rank}]}` 批量排序 |
+| PATCH | `/admin/questionlist-items/sort` | 👑 `{questionListId, items:[{questionId}]}` 顺序即 1..n |
 
 ## 6. 笔记模块 /api
 

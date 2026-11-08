@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.CategoryMapper">
+
+    <sql id="columns">
+        category_id, name, parent_category_id, created_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultType="com.notehub.model.entity.Category">
+        SELECT <include refid="columns"/> FROM categories ORDER BY category_id
+    </select>
+
+    <select id="selectById" resultType="com.notehub.model.entity.Category">
+        SELECT <include refid="columns"/> FROM categories WHERE category_id = #{categoryId}
+    </select>
+
+    <select id="countChildren" resultType="long">
+        SELECT COUNT(*) FROM categories WHERE parent_category_id = #{parentCategoryId}
+    </select>
+
+    <select id="countQuestions" resultType="long">
+        SELECT COUNT(*) FROM questions WHERE category_id = #{categoryId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="categoryId" keyColumn="category_id">
+        INSERT INTO categories (name, parent_category_id) VALUES (#{name}, #{parentCategoryId})
+    </insert>
+
+    <update id="update">
+        UPDATE categories
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="parentCategoryId != null">parent_category_id = #{parentCategoryId},</if>
+        </set>
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM categories WHERE category_id = #{categoryId}
+    </delete>
+</mapper>

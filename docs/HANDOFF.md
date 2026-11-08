@@ -13,12 +13,14 @@
 | E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
 | E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
 | E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
-| E0-4 Docker 路线跑 Redis | 🔄 WSL2 已装好；**等用户重启电脑** → 管理员运行 E:\docker\install-docker-admin.cmd |
+| E0-4 Docker 路线跑 Redis | 🔄 Docker Desktop 已装入 E:\docker(exit 0)；**等用户重启电脑** → 双击 E:\docker\post-reboot-redis.cmd（自动提权：启动引擎→起 notehub-redis） |
 | M0 后端骨架（Boot 3.5.16 + common/security/config + JWT 链路） | ✅ 62a5403 |
-| M1 用户模块（注册/登录/验证码队列/资料/管理端列表+封禁, 36 测试全绿） | ✅ 本次完成 |
-| M2 题库模块（分类/题目/题单 CRUD + Markdown 批量导入） | ⏳ 下一步 |
+| M1 用户模块（注册/登录/验证码队列/资料/管理端列表+封禁, 36 测试全绿） | ✅ c668b6d |
+| M2 题库模块（分类树/题目 CRUD/批量导入/题单/条目排序, 56 测试全绿） | ✅ 本次完成 |
+| M3 笔记核心（笔记 CRUD/聚合列表防N+1/点赞/收藏夹/评论 + 事件驱动消息） | ⏳ 下一步 |
 
 ## 关键决策（不要推翻，除非用户要求）
+0. **邮件交付方式（2026-11-08 用户决定）**：取消 SMTP 授权码需求——验证码**保持 dev 开关模式交付**（enabled=false，验证码直接落 Redis 并经 devCode 返回/日志）；真发链路代码保留为可选项，谁配了 SMTP 谁打开
 1. 技术栈：Spring Boot 3.x + JDK21 + MyBatis(XML) + MySQL8 + Redis + JJWT 0.12；前端 Vite+React18+TS+Antd5+RTK+axios
 2. MVP 范围：完整管理后台 5 页面 ✚ 真发邮件验证码 ✚ 完整收藏夹；搜索/热力图/排行/WebSocket/标签推后到迭代期
 3. 鉴权：Security 只放行+CORS+BCrypt，鉴权 = TokenInterceptor + RequestScope + @NeedLogin/@NeedAdmin AOP（修复原项目 admin 裸奔）
@@ -43,7 +45,7 @@
 - 用户全局 settings.xml 的 `<mirror>` 节点损坏（warning），构建直连中央仓库，能用；不建议擅动用户配置
 
 ## 待用户提供
-1. **QQ 邮箱 SMTP 授权码**（M1 用户模块前；没有则先用 mail.enabled=false 的 dev 模式开发）
+1. ~~QQ 邮箱 SMTP 授权码~~ ❌ 已取消（2026-11-08 用户决定：邮件保持 dev 开关模式，真发为可选配置）
 2. ~~MySQL root 密码~~ ✅ 已提供（root/12345，8.0.41 连通已验证）
 
 ## 环境（本机实测 2026-11-05/06）

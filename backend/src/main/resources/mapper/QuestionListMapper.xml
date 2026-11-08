@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.QuestionListMapper">
+
+    <sql id="columns">
+        question_list_id, name, type, description, created_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultType="com.notehub.model.entity.QuestionList">
+        SELECT <include refid="columns"/> FROM question_lists ORDER BY question_list_id
+    </select>
+
+    <select id="selectById" resultType="com.notehub.model.entity.QuestionList">
+        SELECT <include refid="columns"/> FROM question_lists WHERE question_list_id = #{questionListId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="questionListId" keyColumn="question_list_id">
+        INSERT INTO question_lists (name, type, description)
+        VALUES (#{name}, COALESCE(#{type}, 1), #{description})
+    </insert>
+
+    <update id="update">
+        UPDATE question_lists
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE question_list_id = #{questionListId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM question_lists WHERE question_list_id = #{questionListId}
+    </delete>
+</mapper>

@@ -47,7 +47,7 @@
 | 定时 | spring @Scheduled | 随 BOM | 单机规模够用，不引 quartz |
 | 日志 | Log4j2（排除 logback） | 随 BOM | 异步日志、对齐原项目 |
 | 校验 | hibernate-validator (jakarta) | 随 BOM | 注解式参数校验 |
-| Markdown | flexmark-all | 0.64.8+ | 后端解析（批量导入题目用 AST） |
+| Markdown | ~~flexmark-all~~ | — | 2026-11-08 决策: 批量导入改行级解析(更可控可测), Flexmark 移除; 如后续需要 AST 场景再引入 |
 | 分词 | jieba-analysis | 1.0.2 | 搜索迭代期(I1)使用，MVP 不引 |
 | 构建 | Maven | 3.9.11（E:\Maven） | — |
 | 前端框架 | React + TypeScript | 18.3 / 5.x | 对齐原项目 |
@@ -162,12 +162,15 @@ POST /api/users {email, code, account, password}
 未读数: GET /api/messages/unread/count（前端 30s 轮询；I3 换 WebSocket 真推送）
 ```
 
-### 5.4 题目批量导入（Flexmark AST）
+### 5.4 题目批量导入（行级模板解析）
 ```
-POST /api/admin/questions/batch {markdown}
-→ Flexmark 解析标题(#)/难度(标签或★)/考点 → 逐题校验 → MyBatis 批量 INSERT → 返回成功/失败明细
+POST /api/admin/questions/batch {categoryId, markdown}
+→ QuestionMarkdownParser 行级解析(# 标题/难度：/考点：/题干)
+→ 逐题校验(标题必填、难度行必填) → 合法项批量 INSERT, 失败项明细返回 {total, success, failures}
+→ @Transactional: 校验类失败逐条剔除; DB 级异常整体回滚
 ```
-模板格式在 api-contract.md §7 定义。
+> 变更记录(2026-11-08): 模板是固定行协议, 行级解析比 Flexmark AST 更可控可测, 故弃用 Flexmark;
+> Flexmark 从依赖中移除, 预留给后续笔记摘要/导出场景(§2 选型表同步)。
 
 ### 5.5 每日统计（管理看板数据源）
 23:59 `@Scheduled` 聚合 6 项指标（当日登录/注册/累计注册/当日笔记/当日提交人数/累计笔记）INSERT statistics（uk_date 幂等）。
