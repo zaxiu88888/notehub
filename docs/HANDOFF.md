@@ -13,7 +13,7 @@
 | E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
 | E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
 | E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
-| E0-4 Docker 路线跑 Redis | 🔄 根因定位：VirtualMachinePlatform 未启用（WSL 装了但底层组件没开）→ DISM 已启用(exit 3010=需重启) → **用户再重启一次** → 双击 E:\docker\post-reboot-redis.cmd |
+| E0-4 Docker 路线跑 Redis | 🔄 第三次定位：VMP 被回滚(Disabled)+hypervisorlaunchtype 未设 → 已重新启用+设 auto(2026-11-08 晚) → **再重启一次** → post-reboot-redis.cmd；诊断日志 E:kadownloadsdiag-virt.log |
 | M0 后端骨架（Boot 3.5.16 + common/security/config + JWT 链路） | ✅ 62a5403 |
 | M1 用户模块（注册/登录/验证码队列/资料/管理端列表+封禁, 36 测试全绿） | ✅ c668b6d |
 | M2 题库模块（分类树/题目 CRUD/批量导入/题单/条目排序, 56 测试全绿） | ✅ bf73394 |
@@ -63,7 +63,7 @@
 - `rank` 是 MySQL8 保留字 → 列名用 `sort_rank`
 - 本机 shell 默认非管理员 → 提权走 `Start-Process -Verb RunAs`（用户点 UAC）
 - WSL/VMware 类提示输出是 UTF-16LE，`iconv -f UTF-16LE -t UTF-8` 转码可读
-- **`wsl --install` 不等于 VirtualMachinePlatform 已启用**（Docker 日志关键词: "Virtual Machine Platform not enabled"）；启用用 `dism /online /enable-feature /featurename:VirtualMachinePlatform /all`（exit 3010=成功待重启）
+- **`wsl --install` 不等于 VirtualMachinePlatform 已启用**；DISM 3010 后仍可能被回滚（本机发生过，疑与 ASUS 管家/ACE 反作弊干扰 CBS 有关）→ 用 PowerShell `Enable-WindowsOptionalFeature` 启用 + `bcdedit /set hypervisorlaunchtype auto` 双保险；ps1 脚本含中文必须 UTF-8 带 BOM，否则 PowerShell 5.1 按 GBK 读会解析爆炸（报"字符串缺少终止符"）
 - Docker Desktop `--installation-dir=E:\docker` 是直装根目录：docker.exe 在 `E:\docker\resources\bin\`，GUI 在 `E:\docker\Docker Desktop.exe`
 - **Docker Desktop 已汉化**（用户需求，2026-11-08）：项目 [asxez/DockerDesktop-CN](https://github.com/asxez/DockerDesktop-CN) 4.98.0 版完美匹配（该仓库逐版本跟进，GitHub 直连超时时用镜像 ghfast.top 下载）；替换 `E:\docker\frontend\resources\app.asar(+unpacked)`，**原版备份在同目录 `*.en.bak`**，回滚=改回文件名。官方语言设置在该版本不存在（仅 en-US 包）；asar 内中文验证必须按 UTF-8 读（latin1 读中文永远匹配不到）
 - **汉化资产归档于 `E:\docker\plugin\`**（用户指定路径）：app-win.zip（4.98.0 汉化包）+ apply-cn.ps1/apply-cn.cmd（重汉化脚本，路径已指向 plugin 目录）+ apply.log；Docker Desktop 升级后界面变英文时：下载对应新版包放这里，右键管理员运行 apply-cn.ps1 即可
