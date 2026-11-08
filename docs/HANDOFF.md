@@ -66,6 +66,7 @@
 - **`wsl --install` 不等于 VirtualMachinePlatform 已启用**（Docker 日志关键词: "Virtual Machine Platform not enabled"）；启用用 `dism /online /enable-feature /featurename:VirtualMachinePlatform /all`（exit 3010=成功待重启）
 - Docker Desktop `--installation-dir=E:\docker` 是直装根目录：docker.exe 在 `E:\docker\resources\bin\`，GUI 在 `E:\docker\Docker Desktop.exe`
 - **Docker Desktop 已汉化**（用户需求，2026-11-08）：项目 [asxez/DockerDesktop-CN](https://github.com/asxez/DockerDesktop-CN) 4.98.0 版完美匹配（该仓库逐版本跟进，GitHub 直连超时时用镜像 ghfast.top 下载）；替换 `E:\docker\frontend\resources\app.asar(+unpacked)`，**原版备份在同目录 `*.en.bak`**，回滚=改回文件名。官方语言设置在该版本不存在（仅 en-US 包）；asar 内中文验证必须按 UTF-8 读（latin1 读中文永远匹配不到）
+- **汉化资产归档于 `E:\docker\plugin\`**（用户指定路径）：app-win.zip（4.98.0 汉化包）+ apply-cn.ps1/apply-cn.cmd（重汉化脚本，路径已指向 plugin 目录）+ apply.log；Docker Desktop 升级后界面变英文时：下载对应新版包放这里，右键管理员运行 apply-cn.ps1 即可
 
 ## 重启后的 Docker 安装步骤（重启 WSL2 生效后）
 1. 以管理员身份运行 `E:\docker\install-docker-admin.cmd`（装 Docker Desktop → E:\docker、启动引擎、起 notehub-redis 容器，全自动）
