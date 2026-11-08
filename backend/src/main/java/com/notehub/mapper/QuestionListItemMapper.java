@@ -16,6 +16,9 @@ public interface QuestionListItemMapper {
     QuestionListItem selectOne(@Param("questionListId") Long questionListId,
                                @Param("questionId") Long questionId);
 
+    /** 题单内当前最大排序值(无条目返回 null) */
+    Integer selectMaxSortRank(@Param("questionListId") Long questionListId);
+
     int insert(QuestionListItem item);
 
     int delete(@Param("questionListId") Long questionListId, @Param("questionId") Long questionId);

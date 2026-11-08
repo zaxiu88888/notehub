@@ -193,6 +193,37 @@ class CategoryAndQuestionListServiceTest {
     }
 
     @Test
+    @DisplayName("添加条目: 不传 rank 时追加到末尾(空题单=1, 有条目=max+1)")
+    void addItemAppendsRank() {
+        when(questionListMapper.selectById(anyLong())).thenReturn(questionList());
+        when(questionMapper.selectById(anyLong())).thenReturn(new Question());
+        when(questionListItemMapper.selectOne(anyLong(), anyLong())).thenReturn(null);
+
+        // 空题单 → rank 1
+        when(questionListItemMapper.selectMaxSortRank(1L)).thenReturn(null);
+        questionListService.addItem(1L, 201L, null);
+        org.mockito.ArgumentCaptor<QuestionListItem> c1 =
+                org.mockito.ArgumentCaptor.forClass(QuestionListItem.class);
+        verify(questionListItemMapper).insert(c1.capture());
+        assertEquals(1, c1.getValue().getSortRank());
+
+        // 已有 max=6 → rank 7
+        when(questionListItemMapper.selectMaxSortRank(2L)).thenReturn(6);
+        questionListService.addItem(2L, 202L, null);
+        org.mockito.ArgumentCaptor<QuestionListItem> c2 =
+                org.mockito.ArgumentCaptor.forClass(QuestionListItem.class);
+        verify(questionListItemMapper, org.mockito.Mockito.times(2)).insert(c2.capture());
+        assertEquals(7, c2.getValue().getSortRank());
+
+        // 显式指定 → 透传
+        questionListService.addItem(2L, 203L, 3);
+        org.mockito.ArgumentCaptor<QuestionListItem> c3 =
+                org.mockito.ArgumentCaptor.forClass(QuestionListItem.class);
+        verify(questionListItemMapper, org.mockito.Mockito.times(3)).insert(c3.capture());
+        assertEquals(3, c3.getValue().getSortRank());
+    }
+
+    @Test
     @DisplayName("批量排序: 含题单外题目 → BAD_PARAM; 合法则按顺序写 1..n")
     void sortItemsGuards() {
         when(questionListMapper.selectById(1L)).thenReturn(questionList());

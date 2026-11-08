@@ -21,12 +21,13 @@
         WHERE question_list_id = #{questionListId} AND question_id = #{questionId}
     </select>
 
+    <select id="selectMaxSortRank" resultType="java.lang.Integer">
+        SELECT MAX(sort_rank) FROM question_list_items WHERE question_list_id = #{questionListId}
+    </select>
+
     <insert id="insert">
         INSERT INTO question_list_items (question_list_id, question_id, sort_rank)
-        VALUES (#{questionListId}, #{questionId},
-                COALESCE(#{sortRank}, (SELECT COALESCE(MAX(sort_rank), 0) + 1
-                                       FROM question_list_items
-                                       WHERE question_list_id = #{questionListId})))
+        VALUES (#{questionListId}, #{questionId}, #{sortRank})
     </insert>
 
     <delete id="delete">

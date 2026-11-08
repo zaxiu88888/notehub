@@ -4,6 +4,42 @@
 
 ---
 
+## [S1] 2026-11-08 ｜ 真实环境冒烟测试（首次启动后端）
+
+**做了什么**
+- 生成 application-local.yaml（root/12345 + 随机 48 字节 jwt.secret，gitignore 验证 ✅）
+- 启动后端（Boot 3.5.16 首次真跑）+ curl 冒烟 21 项
+
+**测试门：冒烟 21 项全过 + 单测回归 57/57 绿**
+| 场景 | 结果 |
+|---|---|
+| 分类树两级结构 / 题目列表联表分类名 | ✅ |
+| 详情浏览数 0→1（原子自增实测） | ✅ |
+| 题单列表含 questionCount=6 | ✅ |
+| admin/demo 双角色登录（JWT） | ✅ |
+| whoami 全量 / 40101 未登录 / 40102 普通用户访问管理端 | ✅ |
+| 管理端用户列表（email 已脱敏） | ✅（修复后） |
+| 修改资料（中文昵称/签名） | ✅ |
+| 管理端建题 + 批量导入（total=2, success=1, failures 明确"缺少「难度：」行"） | ✅ |
+| 加条目 200 / 重复加 40901"该题已在题单中" / 越权排序 40001 / 正向重排 200 + 顺序验证 | ✅ |
+| 封禁后登录 → 40301"账号已被封禁" + 解封恢复 | ✅ |
+| 删除守卫：有题分类拒删 40001 | ✅ |
+| 难度筛选 total=4 与种子数据交叉验证一致 | ✅ |
+| Redis 依赖项（邮件验证码/注册） | ⏳ 引擎未启动，重启后回归 |
+
+**自审门：冒烟抓出 4 个真缺陷（全部单测盲区）并修复**
+1. 🐛 **启动阻断**：dev 模式无 spring.mail 配置 → Boot 不创建 JavaMailSender → EmailServiceImpl 注入失败。修复：MailConfig 兜底 @ConditionalOnMissingBean（配了真 SMTP 自动退位）
+2. 🐛 UserMapper.countByQuery 缺 @Param("param") → MyBatis ReflectionException（XML 的 param.account 引用从没真跑过）。修复：补注解
+3. 🐛 MySQL 限制：INSERT 子查询引用目标表 → SQLException("can't specify target table")。修复：删除 SQL 内技巧，新增 selectMaxSortRank，追加排序计算挪到 Service（含单测）
+4. 🐛 契约偏差：Lombok boolean isSuccess() 被 Jackson 序列化成 "success" 字段。修复：@JsonIgnore
+- ✅ 测试侧教训记录：① Windows Git Bash 的 curl 发中文 JSON 是 GBK 字节 → 必须 UTF-8 文件体（--data-binary @file，node 生成）② spring-boot:run 的孙进程杀不干净占 8080 → netstat+taskkill ③ 两次把"测试数据已被我删掉"误判为后端 bug（40401/40001 实为正确守卫）——先查数据再怀疑代码
+**commit**：（本次提交）
+**遗留问题**
+1. 重启电脑 → post-reboot-redis.cmd → 回归 Redis 依赖项（邮件验证码/注册全链路）
+2. frontend/ 未创建（M5）
+
+---
+
 ## [M2] 2026-11-08 ｜ 题库模块（分类/题目/题单/条目 + Markdown 批量导入）
 
 **做了什么**

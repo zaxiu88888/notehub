@@ -108,10 +108,16 @@ public class QuestionListServiceImpl implements QuestionListService {
         if (questionListItemMapper.selectOne(questionListId, questionId) != null) {
             throw BusinessException.of(ErrorCode.DUPLICATED, "该题已在题单中");
         }
+        // 不显式指定位置 → 追加到末尾(MySQL 不允许 INSERT 子查询引用目标表, 故在此计算)
+        Integer rank = sortRank;
+        if (rank == null) {
+            Integer max = questionListItemMapper.selectMaxSortRank(questionListId);
+            rank = (max == null ? 0 : max) + 1;
+        }
         QuestionListItem item = new QuestionListItem();
         item.setQuestionListId(questionListId);
         item.setQuestionId(questionId);
-        item.setSortRank(sortRank);
+        item.setSortRank(rank);
         questionListItemMapper.insert(item);
     }
 

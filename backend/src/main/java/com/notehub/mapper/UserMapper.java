@@ -27,7 +27,7 @@ public interface UserMapper {
     int updateBanned(@Param("userId") Long userId, @Param("isBanned") Integer isBanned);
 
     /** 管理端: 总数 + 分页列表 */
-    long countByQuery(UserQueryParam param);
+    long countByQuery(@Param("param") UserQueryParam param);
 
     List<User> listByQuery(@Param("param") UserQueryParam param, @Param("offset") int offset,
                            @Param("limit") int limit);

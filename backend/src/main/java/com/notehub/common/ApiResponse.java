@@ -1,5 +1,6 @@
 package com.notehub.common;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 /**
@@ -43,6 +44,7 @@ public class ApiResponse<T> {
         return new ApiResponse<>(code, message, null);
     }
 
+    @JsonIgnore // Lombok isSuccess() 会被 Jackson 序列化成 success 字段, 契约只要 code/message/data
     public boolean isSuccess() {
         return code == ErrorCode.SUCCESS.getCode();
     }

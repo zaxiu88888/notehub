@@ -16,7 +16,8 @@
 | E0-4 Docker 路线跑 Redis | 🔄 Docker Desktop 已装入 E:\docker(exit 0)；**等用户重启电脑** → 双击 E:\docker\post-reboot-redis.cmd（自动提权：启动引擎→起 notehub-redis） |
 | M0 后端骨架（Boot 3.5.16 + common/security/config + JWT 链路） | ✅ 62a5403 |
 | M1 用户模块（注册/登录/验证码队列/资料/管理端列表+封禁, 36 测试全绿） | ✅ c668b6d |
-| M2 题库模块（分类树/题目 CRUD/批量导入/题单/条目排序, 56 测试全绿） | ✅ 本次完成 |
+| M2 题库模块（分类树/题目 CRUD/批量导入/题单/条目排序, 56 测试全绿） | ✅ bf73394 |
+| S1 真实环境冒烟（后端首启+21 项 curl 全过; 抓出 4 个单测盲区缺陷已修, 57/57 绿） | ✅ 本次完成 |
 | M3 笔记核心（笔记 CRUD/聚合列表防N+1/点赞/收藏夹/评论 + 事件驱动消息） | ⏳ 下一步 |
 
 ## 关键决策（不要推翻，除非用户要求）
@@ -33,12 +34,14 @@
 
 ## 如何运行
 - 数据库已就绪：notehub 库 + 14 表 + 种子数据（admin/admin123 管理员、demo/user123456）
-- 后端：`cd backend && mvn spring-boot:run`（首次启动前必须：`cp src/main/resources/application-local-template.yaml src/main/resources/application-local.yaml` 并填 MySQL 密码 + jwt.secret）
-- 测试：`mvn test`（当前 36/36 绿，无需 DB/Redis）
-- **dev 邮件联调**：mail.verify-code.enabled=false 时 GET /api/email/verify-code 直接返回 devCode，注册链路无需 SMTP
-- 已实现接口：/api/hello、/api/email/verify-code、/api/users(注册/login/whoami/{userId}/me)、/api/admin/users(+ban) —— 契约详见 docs/api-contract.md
-- Redis 容器：重启电脑后运行 E:\docker\install-docker-admin.cmd（自动装 Docker→E:\docker 并起 notehub-redis）
+- 本地配置已生成：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + 随机 jwt.secret）
+- 后端：`cd backend && mvn spring-boot:run` → 冒烟入口 `curl http://localhost:8080/api/hello`
+- 测试：`mvn test`（当前 57/57 绿，无需 DB/Redis）
+- **dev 邮件联调**：mail.verify-code.enabled=false 时 GET /api/email/verify-code 返回 devCode；**Redis 就绪前邮件/注册接口不可用**
+- 已实现接口：hello、email/verify-code、users(注册/login/whoami/{id}/me)、admin/users(+ban)、categories(+admin)、questions(+admin/batch)、questionlists(+admin)、questionlist-items(+admin/sort) —— 契约见 docs/api-contract.md
+- Redis 容器：重启电脑后双击 E:\docker\post-reboot-redis.cmd（Docker Desktop 已装入 E:\docker）
 - 前端：frontend/ 尚未创建（M5）
+- 冒烟参考：JSON 载荷在 E:\ka\downloads\smoke\（node 生成 UTF-8 文件 + curl --data-binary；Windows 控制台 curl 直发中文会 GBK 乱码）
 
 ## 后端构建注意（本机实测）
 - `JAVA_HOME` 需指向 `E:\jdk 21`；mvn 用 `E:\Maven\apache-maven-3.9.11-bin\apache-maven-3.9.11\bin\mvn.cmd`；仓库 `E:\Maven\mvnrep`
