@@ -13,7 +13,7 @@
 | E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
 | E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
 | E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
-| E0-4 Docker 路线跑 Redis | 🔄 Docker Desktop 已装入 E:\docker(exit 0)；**等用户重启电脑** → 双击 E:\docker\post-reboot-redis.cmd（自动提权：启动引擎→起 notehub-redis） |
+| E0-4 Docker 路线跑 Redis | 🔄 根因定位：VirtualMachinePlatform 未启用（WSL 装了但底层组件没开）→ DISM 已启用(exit 3010=需重启) → **用户再重启一次** → 双击 E:\docker\post-reboot-redis.cmd |
 | M0 后端骨架（Boot 3.5.16 + common/security/config + JWT 链路） | ✅ 62a5403 |
 | M1 用户模块（注册/登录/验证码队列/资料/管理端列表+封禁, 36 测试全绿） | ✅ c668b6d |
 | M2 题库模块（分类树/题目 CRUD/批量导入/题单/条目排序, 56 测试全绿） | ✅ bf73394 |
@@ -63,6 +63,8 @@
 - `rank` 是 MySQL8 保留字 → 列名用 `sort_rank`
 - 本机 shell 默认非管理员 → 提权走 `Start-Process -Verb RunAs`（用户点 UAC）
 - WSL/VMware 类提示输出是 UTF-16LE，`iconv -f UTF-16LE -t UTF-8` 转码可读
+- **`wsl --install` 不等于 VirtualMachinePlatform 已启用**（Docker 日志关键词: "Virtual Machine Platform not enabled"）；启用用 `dism /online /enable-feature /featurename:VirtualMachinePlatform /all`（exit 3010=成功待重启）
+- Docker Desktop `--installation-dir=E:\docker` 是直装根目录：docker.exe 在 `E:\docker\resources\bin\`，GUI 在 `E:\docker\Docker Desktop.exe`
 
 ## 重启后的 Docker 安装步骤（重启 WSL2 生效后）
 1. 以管理员身份运行 `E:\docker\install-docker-admin.cmd`（装 Docker Desktop → E:\docker、启动引擎、起 notehub-redis 容器，全自动）
