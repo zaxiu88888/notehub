@@ -5,6 +5,27 @@
 
 
 
+
+---
+
+## [M5-A] 2026-11-09 ｜ 前端骨架 + 首页/题单页（含真浏览器验证）
+
+**做了什么**
+- 工程: Vite5 + React18 + TS + Antd5 + RTK2 + react-router6 + axios + Vitest; ESM 别名用 import.meta.url(避开 __dirname); dev 代理 /api /images → 8080
+- 请求层: axios 拦截器注入 Bearer; unwrap 纯函数统一解 {code,message,data}; ApiError 携带业务码; 40101 广播 notehub:unauthorized
+- 状态: userSlice(login/register/whoami thunk + token 持久化 + logout/clearAuth)
+- 页面: 布局(导航/登录弹窗/用户菜单) + 首页(题库筛选 + 最新笔记双栏) + 题单页(左单右题 + 刷题进度) + NotFound
+- 组件: LoginModal(登录/注册双 Tab, dev 模式自动回填验证码+60s 倒计时)、DifficultyTag
+- 测试: 9 个(vitest) — unwrap/token 4、userSlice 3、HomePage 渲染+空态 2; 生产构建通过
+- 真浏览器验证(内嵌浏览器): 首页题库/笔记流真实数据渲染、难度筛选 简单→6题/困难→0题、题单导航、demo 账号 UI 登录、登录后题单进度 1/6 且已写笔记标记正确、截图确认排版
+
+**测试门**: 前端 9/9 绿 +  成功(tsc 严格模式)
+**自审门(diff 自审)**
+- ✅ 修复 a11y: 分类/难度筛选无访问名(自动化与读屏都无法定位) → 加 aria-label, 浏览器验证通过
+- ✅ 修复时序缺陷: 登录后题单页不重新拉取(进度依赖登录态) → effect 依赖 token
+- ✅ 修复 ESM 运行时坑: vite config 用 __dirname 在 type:module 下为 undefined → import.meta.url
+- ⚠️ 已知: 单包 1MB(antd/react 未拆分, 构建告警) → M6 前加 manualChunks; 40101 由页面捕获, 写操作统一用 handleAuthError 在批次 B 接入
+**commit**: (本次提交)
 ---
 
 ## [M4] 2026-11-09 ｜ 管理端统计看板 + 图片上传 + 每日快照（后端 MVP 收尾）
