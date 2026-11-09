@@ -72,6 +72,16 @@
 1. 以管理员身份运行 `E:\docker\install-docker-admin.cmd`（装 Docker Desktop → E:\docker、启动引擎、起 notehub-redis 容器，全自动）
 2. 验证：`E:\docker\Docker Desktop\resources\bin\docker.exe exec notehub-redis redis-cli ping` → PONG
 
+## 远程仓库（待推送）
+- origin: https://github.com/zaxiu88888/notehub.git （2026-11-09 建仓, 用户要求**项目完成后再推送**）
+- 本地已有 10+ commit, 未 push
+- **公开前检查清单**（转 Public 之前必须做）:
+  1. 清理本交接文档/项目日志中的本机绝对路径与「密码备忘文件」等描述（仅内部参考, 公开仓库无需暴露）
+  2. 确认 application-local.yaml 未被跟踪（已 gitignore）
+  3. 补 LICENSE（建议 MIT）
+  4. 确认 uploads/ 与 target/ 未入库
+  5. 最后再 push: git push -u origin main
+
 ## 相关资产
 - 原项目逆向分析：E:\ka\kamanotes-分析报告.md ｜ 原源码：E:\ka\kamanotes\
 - 本仓库：E:\ka\notehub（main 分支）
