@@ -10,7 +10,7 @@
 | 里程碑 | 状态 |
 |---|---|
 | D0 文档定稿包（README/技术设计/API 契约/环境手册/调研/日志/交接/规则） | ✅ commit 303e1ac |
-| E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
+| E0-1 建库 notehub（utf8mb4） | ✅ root 本地密码验证通过 |
 | E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
 | E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
 | E0-4 Docker 路线跑 Redis | ✅ **2026-11-09 攻克**: 删除 MuMu VMM 驱动后第4次启用 VMP 存活; 引擎 29.9.2; notehub-redis 容器 Up + PONG; restart=unless-stopped; 计划任务 DockerDesktopAutoStart 已设开机自启; 邮件验证码+注册全链路真 Redis 回归通过 |
@@ -49,12 +49,11 @@
 
 ## 待用户提供
 1. ~~QQ 邮箱 SMTP 授权码~~ ❌ 已取消（2026-11-08 用户决定：邮件保持 dev 开关模式，真发为可选配置）
-2. ~~MySQL root 密码~~ ✅ 已提供（root/12345，8.0.41 连通已验证）
+2. ~~MySQL root 密码~~ ✅ 已配置于本地 application-local.yaml（8.0.41 已验证连通）
 
 ## 环境（本机实测 2026-11-05/06）
 - JDK 21.0.12 → E:\jdk 21 ｜ Maven 3.9.11 → E:\Maven ｜ MySQL 8.0.41 → C:\Program Files（服务 MySQL80）
 - Node.js：未装（计划 E:\nodejs）｜ Redis：未装（计划 E:\redis）
-- 用户密码备忘在 E:\ka\新建 文本文档.txt（仓库外，不入库）
 
 ## 环境踩坑记录（E0 实测）
 - Node 的 zip 用 Git Bash 的 GNU tar 解不开（"does not look like a tar archive"），要用 PowerShell `Expand-Archive`

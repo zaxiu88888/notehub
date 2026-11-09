@@ -183,7 +183,7 @@
 ## [S1] 2026-11-08 ｜ 真实环境冒烟测试（首次启动后端）
 
 **做了什么**
-- 生成 application-local.yaml（root/12345 + 随机 48 字节 jwt.secret，gitignore 验证 ✅）
+- 生成 application-local.yaml（本地 DB 密码 + 随机 48 字节 jwt.secret，gitignore 验证 ✅）
 - 启动后端（Boot 3.5.16 首次真跑）+ curl 冒烟 21 项
 
 **测试门：冒烟 21 项全过 + 单测回归 57/57 绿**
@@ -302,7 +302,7 @@
 ## [E0] 2026-11-06 ｜ 环境准备（数据库/Node 完成，Docker 进行中）
 
 **做了什么**
-- MySQL：验证 root/12345 连通（8.0.41）；建库 notehub（utf8mb4）；编写并执行 schema.sql（14 张表，含防重唯一约束/索引/软删字段）与 seed.sql（管理员 admin/admin123 + demo 账号、2 个一级分类 8 个二级分类、8 道题、1 个题单 6 条目）——BCrypt 散列用 Node bcryptjs 现场生成，非网络拷贝
+- MySQL：验证本地 DB 账号连通（8.0.41）；建库 notehub（utf8mb4）；编写并执行 schema.sql（14 张表，含防重唯一约束/索引/软删字段）与 seed.sql（管理员 admin/admin123 + demo 账号、2 个一级分类 8 个二级分类、8 道题、1 个题单 6 条目）——BCrypt 散列用 Node bcryptjs 现场生成，非网络拷贝
 - Node.js 22.23.4 zip 解压到 E:\nodejs（PowerShell Expand-Archive；GNU tar 解不开 zip 踩坑）；用户 PATH 追加 E:\nodejs（SetEnvironmentVariable，避开 setx 截断风险）；npm registry 确认 npmmirror
 - Docker 路线（用户决策：坚持 Docker、装到 E:\docker）：Docker Desktop Installer.exe（595MB，PE32+ 校验通过）已下载到 E:\docker；编写重启后自动安装脚本 install-docker-admin.cmd（安装→启动引擎→起 notehub-redis 容器→验证）；发起 WSL2 提权安装（wsl --install --no-distribution，UAC 已交给用户确认）
 - 文档同步：environment-setup.md §3/§7 改为 Docker 实际方案 + 镜像加速；HANDOFF.md 刷新进度与踩坑记录
@@ -339,7 +339,7 @@
   - ✅ 修正原项目反面教材：JWT secret 不入库（application-local.yaml 已 gitignore）
   - ✅ 接口契约与 technical-design §7 错误码对齐（41001/41002/40901 已引用）
   - ⚠️ 发现：原项目 /api/notes/download、ranklist 等接口未进 MVP 契约，已在「附录：迭代预留」中登记，防止遗漏
-- MySQL 连通性实测：root/12345 → 8.0.41 连接成功（密码仅存本机 gitignore 外的 E:\ka 记事本 + 环境手册引用，不入库）
+- MySQL 连通性实测：本地 DB 账号 → 8.0.41 连接成功（凭据仅存本机 gitignore 的配置文件，不入库）
 
 **commit**：（本次提交）
 **遗留问题**

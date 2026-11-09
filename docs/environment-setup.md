@@ -63,7 +63,7 @@ sc query MySQL80                       # 服务存在且 RUNNING
 spring:
   datasource:
     username: root
-    password: "12345"
+    password: "your_mysql_password"
 mail:
   username: 你的QQ邮箱@qq.com
   password: 你的SMTP授权码        # QQ邮箱→设置→账户→开启SMTP→获取授权码
