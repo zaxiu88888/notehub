@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Avatar, Badge, Button, Dropdown, Layout, Menu, Space, Typography, App } from 'antd';
+import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Space, Typography, App } from 'antd';
 import { MessageOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { UNAUTHORIZED_EVENT } from '@/request/http';
@@ -19,6 +19,7 @@ export default function UserLayout() {
   const { token, user } = useAppSelector((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [searchValue, setSearchValue] = useState("");
 
   // 有 token 时恢复登录态
   useEffect(() => {
@@ -55,6 +56,15 @@ export default function UserLayout() {
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
+
+  /** 顶栏搜索: 关键词跳转搜索结果页 */
+  const submitSearch = (value: string) => {
+    const keyword = value.trim();
+    if (keyword) {
+      navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
+      setSearchValue("");
+    }
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -107,6 +117,20 @@ export default function UserLayout() {
             items={navItems}
             style={{ flex: 1, minWidth: 200, borderBottom: 'none' }}
           />
+          <Space.Compact>
+            <Input
+              aria-label="全局搜索"
+              placeholder="搜索笔记 / 用户"
+              allowClear
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onPressEnter={() => submitSearch(searchValue)}
+              style={{ width: 220 }}
+            />
+            <Button type="primary" aria-label="搜索" onClick={() => submitSearch(searchValue)}>
+              搜索
+            </Button>
+          </Space.Compact>
           {token && user ? (
             <Dropdown
               menu={{

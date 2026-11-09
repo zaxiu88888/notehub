@@ -214,6 +214,20 @@ frontend/src/
 
 统一响应：`{code, message, data}`；分页响应 data 含 `{list, page, pageSize, total}`。
 
+## 5.6 搜索设计（I1）
+
+```
+写: 笔记创建/编辑 → search_vector = 题目标题 + 正文(纯文本)
+库: notes.search_vector + FULLTEXT INDEX ... WITH PARSER ngram
+读: 关键词 → SearchUtils(Jieba 分词/去 Markdown 符号/去重/截断) → MATCH ... AGAINST(... IN NATURAL LANGUAGE MODE)
+缓存: Redis "search:notes:{keywordHash}:{page}:{size}" → {ids,total}, TTL 5min
+     缓存内容与用户无关; VO 每次按当前用户批量补 myActions(不缓存个性化字段)
+用户搜索: username/account LIKE, 不缓存, 邮箱脱敏
+```
+
+> 说明: ngram 负责中文 bigram 索引, Jieba 负责查询侧分词与噪声清理, 两者互补;
+> 写入路径已维护向量, 历史数据由 `db/migration/I1_search.sql` 回填。
+
 ## 8. 安全设计清单
 - 密码 BCrypt（强度默认 10）；JWT HS256 + 30 天过期 + local.yaml 密钥
 - 所有 admin 接口 `@NeedAdmin`；资源写操作校验归属（owner/40301）

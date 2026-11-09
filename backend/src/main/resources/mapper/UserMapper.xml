@@ -101,4 +101,19 @@
     <update id="updateAvatar">
         UPDATE users SET avatar_url = #{avatarUrl} WHERE user_id = #{userId}
     </update>
+    <!-- I1 搜索: 昵称/账号模糊匹配, 不返回邮箱等敏感列 -->
+    <select id="searchByKeyword" resultType="com.notehub.model.entity.User">
+        SELECT <include refid="publicColumns"/>
+        FROM users
+        WHERE username LIKE CONCAT('%', #{keyword}, '%')
+           OR account LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY user_id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByKeyword" resultType="long">
+        SELECT COUNT(*) FROM users
+        WHERE username LIKE CONCAT('%', #{keyword}, '%')
+           OR account LIKE CONCAT('%', #{keyword}, '%')
+    </select>
 </mapper>

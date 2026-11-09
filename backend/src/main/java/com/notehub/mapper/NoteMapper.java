@@ -27,7 +27,8 @@ public interface NoteMapper {
 
     int insert(Note note);
 
-    int updateContent(@Param("noteId") Long noteId, @Param("content") String content);
+    int updateContent(@Param("noteId") Long noteId, @Param("content") String content,
+                      @Param("searchVector") String searchVector);
 
     int deleteById(@Param("noteId") Long noteId);
 
@@ -57,4 +58,11 @@ public interface NoteMapper {
     long countTodayAuthors();
 
     long countTotalNotes();
+
+    // ---- I1 搜索 ----
+    /** FULLTEXT(ngram) 搜索, 按相关度排序 */
+    List<Note> searchByKeyword(@Param("keyword") String keyword,
+                               @Param("offset") int offset, @Param("limit") int limit);
+
+    long countByKeyword(@Param("keyword") String keyword);
 }

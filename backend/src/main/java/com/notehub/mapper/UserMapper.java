@@ -40,4 +40,10 @@ public interface UserMapper {
     long countTotal();
 
     int updateAvatar(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
+
+    // ---- I1 搜索 ----
+    List<User> searchByKeyword(@Param("keyword") String keyword,
+                               @Param("offset") int offset, @Param("limit") int limit);
+
+    long countByKeyword(@Param("keyword") String keyword);
 }

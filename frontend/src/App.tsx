@@ -6,6 +6,7 @@ import QuestionListPage from './apps/user/pages/questionList/QuestionListPage';
 import UserCenterPage from './apps/user/pages/userCenter/UserCenterPage';
 import UserHomePage from './apps/user/pages/userHome/UserHomePage';
 import MessagePage from './apps/user/pages/message/MessagePage';
+import SearchPage from './apps/user/pages/search/SearchPage';
 import AdminLayout from './apps/admin/AdminLayout';
 import DashboardPage from './apps/admin/pages/dashboard/DashboardPage';
 import QuestionsAdminPage from './apps/admin/pages/questions/QuestionsAdminPage';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="user-center" element={<UserCenterPage />} />
         <Route path="users/:userId" element={<UserHomePage />} />
         <Route path="messages" element={<MessagePage />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 

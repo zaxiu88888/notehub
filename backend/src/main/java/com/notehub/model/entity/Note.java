@@ -29,6 +29,9 @@ public class Note {
 
     private LocalDateTime updatedAt;
 
+    /** 搜索向量(题目+正文, 全文索引列, 不对外返回) */
+    private String searchVector;
+
     /** 联表附带列(users), 非表字段 */
     private String authorName;
 

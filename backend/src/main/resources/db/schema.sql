@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS notes (
     author_id     BIGINT UNSIGNED NOT NULL COMMENT '作者',
     question_id   BIGINT UNSIGNED NOT NULL COMMENT '关联题目',
     content       MEDIUMTEXT   NOT NULL COMMENT 'Markdown 内容',
+    search_vector MEDIUMTEXT            DEFAULT NULL COMMENT '搜索向量(题目+正文纯文本, ngram 全文索引)',
     like_count    INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '点赞数(原子更新维护)',
     comment_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '评论数',
     collect_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '收藏数',
@@ -88,7 +89,8 @@ CREATE TABLE IF NOT EXISTS notes (
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_author (author_id),
     KEY idx_question (question_id),
-    KEY idx_created (created_at)
+    KEY idx_created (created_at),
+    FULLTEXT KEY ft_notes_search (search_vector) WITH PARSER ngram
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='笔记';
 
 -- 7. 笔记点赞

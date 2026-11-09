@@ -66,12 +66,12 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="noteId" keyColumn="note_id">
-        INSERT INTO notes (author_id, question_id, content)
-        VALUES (#{authorId}, #{questionId}, #{content})
+        INSERT INTO notes (author_id, question_id, content, search_vector)
+        VALUES (#{authorId}, #{questionId}, #{content}, #{searchVector})
     </insert>
 
     <update id="updateContent">
-        UPDATE notes SET content = #{content} WHERE note_id = #{noteId}
+        UPDATE notes SET content = #{content}, search_vector = #{searchVector} WHERE note_id = #{noteId}
     </update>
 
     <delete id="deleteById">
@@ -135,5 +135,20 @@
 
     <select id="countTotalNotes" resultType="long">
         SELECT COUNT(*) FROM notes
+    </select>
+    <!-- I1 搜索: ngram 全文索引, 按相关度排序; 关键词已由 Jieba 预处理 -->
+    <select id="searchByKeyword" resultType="com.notehub.model.entity.Note">
+        SELECT <include refid="listColumns"/>
+        FROM notes n
+        JOIN users u ON n.author_id = u.user_id
+        JOIN questions q ON n.question_id = q.question_id
+        WHERE MATCH(n.search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
+        ORDER BY MATCH(n.search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE) DESC, n.note_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByKeyword" resultType="long">
+        SELECT COUNT(*) FROM notes
+        WHERE MATCH(search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
     </select>
 </mapper>

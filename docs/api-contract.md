@@ -157,8 +157,17 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 
 ---
 
+## 13. 搜索 /api/search（I1 已实现）
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `/search/notes?keyword=&page=&pageSize=` | 🌐 | 笔记全文搜索（题目 + 正文，ngram 索引 + Jieba 预处理），按相关度排序；登录时返回 myActions |
+| GET | `/search/users?keyword=&page=&pageSize=` | 🌐 | 用户搜索（昵称/账号模糊），不返回邮箱 |
+
+- 空/纯符号关键词 → 空列表；关键词长度截断 64 字符；结果缓存 5 分钟（按关键词哈希+分页，仅缓存 ID 与总数）
+- 前端入口：顶栏搜索框 → `/search?keyword=`
+
 ## 附：MVP 后迭代接口预留（不在本期实现）
-- I1 搜索：`GET /search/notes` `GET /search/users`
 - I2 数据：`GET /notes/ranklist` `GET /notes/heatmap` `GET /notes/top3count` `GET /notes/download`
 - I3 WebSocket：`/ws` STOMP 端点（未读推送，替代轮询）
 - I4 标签：`GET /tags` `GET /questions?tag=`

@@ -11,6 +11,23 @@
 
 
 
+
+---
+
+## [I1] 2026-11-09 ｜ 搜索能力（FULLTEXT ngram + Jieba + Redis 缓存）
+
+**做了什么**
+- 数据库: notes 增加 search_vector(MEDIUMTEXT) + FULLTEXT(ngram) 索引；`db/migration/I1_search.sql` 可重复执行并回填历史数据；schema.sql 同步新装环境
+- 写入维护: 笔记创建/编辑时生成向量(题目标题+正文), NoteMapper insert/updateContent 同步落库
+- 查询: SearchUtils(Jieba 分词 + 去 Markdown/标点 + 去重 + 64 字截断) → MATCH AGAINST(NATURAL LANGUAGE)；用户搜索 LIKE 且邮箱脱敏
+- 缓存: Redis key=search:notes:{keywordHash}:{page}:{size}，只缓存 {ids,total}(与用户无关)，VO 按当前用户实时补 myActions；TTL 5min，缓存读失败降级查库
+- 接口: GET /api/search/notes、/api/search/users；前端顶栏搜索框(输入+按钮/回车) + /search 结果页(笔记/用户页签、分页)
+- 测试: 后端 +8（SearchUtils 4、SearchServiceImpl 4）；前端 +3（SearchPage）
+
+**测试门**: 后端 131/131；前端 21/21；构建通过
+**冒烟门**: 真实环境 `keyword=哈希表` → 命中 1 条(两数之和)；用户搜索 demo 命中且 email=null；空关键词 total=0；Redis 键存在且 TTL≈294s、内容 `{"ids":[1],"total":1}`；浏览器顶栏搜索→/search 结果正确、用户页签可用
+**自审门**: 修复 2 处自身问题 — ① 缓存若含 VO 会串用户，改为只缓存 ID/总数；② 顶栏 Input.Search 的回车在自动化下不稳定，改为显式输入框+按钮(可访问名明确)
+**commit**: (本次提交)
 ---
 
 ## [S4] 2026-11-09 ｜ 独立复测缺陷修复（3×P1 + 9×P2 全部闭环）

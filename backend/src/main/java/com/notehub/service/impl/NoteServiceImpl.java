@@ -10,6 +10,7 @@ import com.notehub.mapper.NoteMapper;
 import com.notehub.mapper.QuestionMapper;
 import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.entity.Note;
+import com.notehub.model.entity.Question;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.service.NoteService;
 import lombok.extern.log4j.Log4j2;
@@ -64,7 +65,8 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public Long createNote(Long authorId, Long questionId, String content) {
-        if (questionMapper.selectById(questionId) == null) {
+        Question question = questionMapper.selectById(questionId);
+        if (question == null) {
             throw BusinessException.of(ErrorCode.NOT_FOUND, "题目不存在");
         }
         if (noteMapper.selectByAuthorAndQuestion(authorId, questionId) != null) {
@@ -74,6 +76,7 @@ public class NoteServiceImpl implements NoteService {
         note.setAuthorId(authorId);
         note.setQuestionId(questionId);
         note.setContent(content);
+        note.setSearchVector(buildSearchVector(question.getTitle(), content));
         noteMapper.insert(note);
         log.info("[笔记] 发布: noteId={}, author={}, question={}", note.getNoteId(), authorId, questionId);
         return note.getNoteId();
@@ -85,7 +88,8 @@ public class NoteServiceImpl implements NoteService {
         if (!note.getAuthorId().equals(operatorId)) {
             throw BusinessException.of(ErrorCode.FORBIDDEN, "只能编辑自己的笔记");
         }
-        noteMapper.updateContent(noteId, content);
+        noteMapper.updateContent(noteId, content,
+                buildSearchVector(note.getQuestionTitle(), content));
     }
 
     @Override
@@ -129,6 +133,17 @@ public class NoteServiceImpl implements NoteService {
         List<Note> notes = pageIds.stream().map(byId::get)
                 .filter(Objects::nonNull).toList();
         return PageVO.of(toVOs(notes, currentUserId), page, pageSize, total);
+    }
+
+    @Override
+    public List<NoteVO> toVOList(List<Note> notes, Long currentUserId) {
+        return toVOs(notes, currentUserId);
+    }
+
+    /** 搜索向量 = 题目标题 + 笔记正文(供 ngram 全文索引) */
+    private String buildSearchVector(String questionTitle, String content) {
+        String title = questionTitle == null ? "" : questionTitle;
+        return title + "\n" + (content == null ? "" : content);
     }
 
     private Note requireNote(Long noteId) {

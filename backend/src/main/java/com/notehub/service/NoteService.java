@@ -26,6 +26,9 @@ public interface NoteService {
     /** 我在某题下的笔记 ID(题目详情页跳编辑用); 无则 null */
     Long findMyNoteId(Long authorId, Long questionId);
 
+    /** 供搜索等场景复用: 把实体列表组装为 VO(批量补互动状态) */
+    java.util.List<NoteVO> toVOList(java.util.List<com.notehub.model.entity.Note> notes, Long currentUserId);
+
     /** 收藏夹内容: 按笔记列表复用聚合逻辑 */
     PageVO<NoteVO> listNotesByIds(java.util.List<Long> noteIds, int page, int pageSize, Long currentUserId);
 }
