@@ -4,6 +4,26 @@
 
 
 
+
+---
+
+## [M4] 2026-11-09 ｜ 管理端统计看板 + 图片上传 + 每日快照（后端 MVP 收尾）
+
+**做了什么**
+- 统计: Statistic 实体 + StatisticMapper(upsert/近期趋势) + UserMapper/NoteMapper 6 项聚合查询 + StatisticServiceImpl(今日实时 6 指标 + 趋势升序) + DailyStatisticTask(23:59 cron, 异常不外抛)
+- 看板接口: GET /api/statistic?days=30 (@NeedAdmin), 趋势天数收敛 1~90
+- 上传: UploadService/Impl(后缀白名单 jpg/jpeg/png/gif/webp、5MB、UUID 重命名、拒绝 svg 防 XSS、路径穿越安全) + UploadController POST /api/upload/image(@NeedLogin)
+- 头像: POST /api/users/avatar(multipart→存图+updateAvatar), 打通契约; /images/** 静态映射实测可访问
+- 错误码治理: GlobalExceptionHandler 新增 5 类客户端异常映射(坏JSON/缺参数/类型错/缺文件字段/超大小) → 40001, 不再落 50000
+
+**测试门**: 101/101 绿(新增 14: Statistic 3/Upload 5/Task 2/ExceptionHandler 4)
+**冒烟门(真环境 8+3 项)**: 看板 6 指标真实聚合(login=3/reg=1/note=1)、普通用户 40102、PNG 上传成功并可 HTTP 200 取回(image/png)、svg 拒绝、未登录 40101、头像更新、upsert 幂等实测(两次执行仍 1 行)、趋势读快照、坏JSON/缺参数/缺文件均 40001
+**自审门**
+- ✅ 修复: 客户端错误被兜底成 50000(坏 JSON/缺参数/缺 multipart 字段/超 5MB) → 5 类映射 + 单测
+- ✅ 检查: UUID 文件名防路径穿越(测试含 ../../evil.png)、svg 排除理由(内嵌脚本 XSS)、定时任务异常不外抛
+- ⚠️ 已知限制: ① 换头像不删旧文件(磁盘累积, I5 清理任务) ② upsert 用 VALUES() 语法(MySQL 8.0.41 仍支持, 8.0.20+ 标记弃用, 升级 9.x 前改 alias 语法) ③ 登录数按 last_login_at 聚合(非逐次登录日志, 与原项目同口径)
+**commit**: (本次提交)
+**遗留**: 后端 MVP 完成, 转前端
 ---
 
 ## [M3] 2026-11-09 ｜ 笔记核心（CRUD/聚合防N+1/点赞/收藏夹/评论/事件驱动消息）

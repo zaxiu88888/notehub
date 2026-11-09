@@ -24,7 +24,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 /**
  * 用户 /api/users, 管理端 /api/admin/users
@@ -80,6 +84,14 @@ public class UserController {
     public ApiResponse<Void> ban(@PathVariable Long userId, @Valid @RequestBody BanRequest body) {
         userService.updateBanned(userId, body.getIsBanned());
         return ApiResponse.ok();
+    }
+
+    /** 上传头像: multipart file, 返回新头像地址 */
+    @PostMapping("/users/avatar")
+    @NeedLogin
+    public ApiResponse<Map<String, String>> uploadAvatar(@RequestPart("file") MultipartFile file) {
+        String url = userService.updateAvatar(requestContext.requireUserId(), file);
+        return ApiResponse.ok("头像已更新", Map.of("avatarUrl", url));
     }
 
     /** 封禁请求体 */

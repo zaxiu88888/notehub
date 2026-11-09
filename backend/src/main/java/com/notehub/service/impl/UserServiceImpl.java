@@ -13,11 +13,13 @@ import com.notehub.model.vo.user.LoginUserVO;
 import com.notehub.model.vo.user.UserVO;
 import com.notehub.security.JwtUtil;
 import com.notehub.service.EmailService;
+import com.notehub.service.UploadService;
 import com.notehub.service.UserService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,13 +31,16 @@ public class UserServiceImpl implements UserService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final UploadService uploadService;
 
     public UserServiceImpl(UserMapper userMapper, EmailService emailService,
-                           PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+                           PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+                           UploadService uploadService) {
         this.userMapper = userMapper;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.uploadService = uploadService;
     }
 
     @Override
@@ -136,6 +141,16 @@ public class UserServiceImpl implements UserService {
         }
         userMapper.updateBanned(userId, isBanned);
         log.info("[管理] 用户封禁状态变更: userId={}, isBanned={}", userId, isBanned);
+    }
+
+    @Override
+    public String updateAvatar(Long userId, MultipartFile file) {
+        if (userMapper.selectById(userId) == null) {
+            throw BusinessException.of(ErrorCode.NOT_FOUND);
+        }
+        String url = uploadService.saveImage(file);
+        userMapper.updateAvatar(userId, url);
+        return url;
     }
 
     private UserVO toVO(User user) {

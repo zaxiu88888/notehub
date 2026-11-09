@@ -33,4 +33,7 @@ public interface UserService {
 
     /** 管理端: 封禁/解封 */
     void updateBanned(Long userId, Integer isBanned);
+
+    /** 上传头像: 存图 + 更新 avatar_url, 返回新地址 */
+    String updateAvatar(Long userId, org.springframework.web.multipart.MultipartFile file);
 }

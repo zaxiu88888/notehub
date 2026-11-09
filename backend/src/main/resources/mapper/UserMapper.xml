@@ -84,4 +84,21 @@
         ORDER BY created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
+
+    <!-- 统计聚合: 登录以 last_login_at 当日计(与每日快照口径一致) -->
+    <select id="countTodayLogin" resultType="long">
+        SELECT COUNT(*) FROM users WHERE DATE(last_login_at) = CURDATE()
+    </select>
+
+    <select id="countTodayRegister" resultType="long">
+        SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()
+    </select>
+
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*) FROM users
+    </select>
+
+    <update id="updateAvatar">
+        UPDATE users SET avatar_url = #{avatarUrl} WHERE user_id = #{userId}
+    </update>
 </mapper>

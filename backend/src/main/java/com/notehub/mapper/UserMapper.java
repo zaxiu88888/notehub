@@ -31,4 +31,13 @@ public interface UserMapper {
 
     List<User> listByQuery(@Param("param") UserQueryParam param, @Param("offset") int offset,
                            @Param("limit") int limit);
+
+    // ---- 统计看板聚合(每日快照) ----
+    long countTodayLogin();
+
+    long countTodayRegister();
+
+    long countTotal();
+
+    int updateAvatar(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
 }

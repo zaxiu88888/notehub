@@ -49,4 +49,12 @@ public interface NoteMapper {
 
     /** 批量取一组用户收藏过的笔记 ID(聚合列表第二步) */
     List<Long> selectCollectedNoteIds(@Param("userId") Long userId, @Param("noteIds") List<Long> noteIds);
+
+    // ---- 统计看板聚合(每日快照) ----
+    long countTodayNotes();
+
+    /** 当日提交笔记的人数(作者去重) */
+    long countTodayAuthors();
+
+    long countTotalNotes();
 }

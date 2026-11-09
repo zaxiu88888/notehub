@@ -123,4 +123,17 @@
         WHERE c.creator_id = #{userId} AND cn.note_id IN
         <foreach collection="noteIds" item="id" open="(" separator="," close=")">#{id}</foreach>
     </select>
+
+    <!-- 统计聚合 -->
+    <select id="countTodayNotes" resultType="long">
+        SELECT COUNT(*) FROM notes WHERE DATE(created_at) = CURDATE()
+    </select>
+
+    <select id="countTodayAuthors" resultType="long">
+        SELECT COUNT(DISTINCT author_id) FROM notes WHERE DATE(created_at) = CURDATE()
+    </select>
+
+    <select id="countTotalNotes" resultType="long">
+        SELECT COUNT(*) FROM notes
+    </select>
 </mapper>

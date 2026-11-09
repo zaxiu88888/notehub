@@ -51,7 +51,7 @@ class UserServiceImplTest {
         emailService = mock(EmailService.class);
         passwordEncoder = new BCryptPasswordEncoder();
         userService = new UserServiceImpl(userMapper, emailService, passwordEncoder,
-                new JwtUtil(SECRET, 3600));
+                new JwtUtil(SECRET, 3600), mock(UploadService.class));
     }
 
     private RegisterRequest registerRequest() {

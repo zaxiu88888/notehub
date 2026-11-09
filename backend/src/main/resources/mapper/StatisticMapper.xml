@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.StatisticMapper">
+
+    <select id="listRecent" resultType="com.notehub.model.entity.Statistic">
+        SELECT id, login_count, register_count, total_register_count, note_count,
+               submit_note_count, total_note_count, date, created_at
+        FROM statistics
+        ORDER BY date DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectByDate" resultType="com.notehub.model.entity.Statistic">
+        SELECT id, login_count, register_count, total_register_count, note_count,
+               submit_note_count, total_note_count, date, created_at
+        FROM statistics
+        WHERE date = #{date}
+    </select>
+
+    <!-- uk_date 幂等: 同日重跑覆盖, 定时任务可安全重复执行 -->
+    <insert id="upsert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO statistics (login_count, register_count, total_register_count,
+                                note_count, submit_note_count, total_note_count, date)
+        VALUES (#{loginCount}, #{registerCount}, #{totalRegisterCount},
+                #{noteCount}, #{submitNoteCount}, #{totalNoteCount}, #{date})
+        ON DUPLICATE KEY UPDATE
+            login_count = VALUES(login_count),
+            register_count = VALUES(register_count),
+            total_register_count = VALUES(total_register_count),
+            note_count = VALUES(note_count),
+            submit_note_count = VALUES(submit_note_count),
+            total_note_count = VALUES(total_note_count)
+    </insert>
+</mapper>
