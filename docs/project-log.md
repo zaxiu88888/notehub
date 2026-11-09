@@ -2,6 +2,21 @@
 
 > 每干一步追加一条。格式：日期 ｜ 做了什么 ｜ 测试/自审结论 ｜ commit ｜ 遗留问题
 
+
+---
+
+## [S2] 2026-11-09 ｜ Docker/Redis 环境攻克 + 邮件验证码/注册全链路回归
+
+**做了什么**
+- Docker 四天拉锯战终结: 元凶=MuMu 模拟器 MuMuVMMDrv 驱动(每次开机回滚 VirtualMachinePlatform)。处置: 用户确认不用 MuMu → 卸载残留+sc delete 驱动 → 第4次启用 VMP 即时生效(State=Enabled 历史首次) → 重启后 vmcompute Running、引擎 29.9.2、notehub-redis Up + PONG
+- 长期化: 容器 restart=unless-stopped; 计划任务 DockerDesktopAutoStart(Docker Desktop 开机自启); zip 版 Redis 备胎留存 E:edis
+- 后端连真 Redis 回归: 发验证码(devCode) → 60s 限流 41002 → 正确码注册(userId=3+JWT) → 同码复用 41001(一次性) → 新号登录 200, 全链路 5/5 绿
+
+**测试门**: 冒烟 5/5 绿(见上); 单测未动(57/57 基线)
+**自审门**: 无代码改动(纯环境+回归); 环境教训已固化至 HANDOFF 踩坑记录(MuMu/PS1 BOM/UTF-16)
+**commit**: (本次提交)
+**遗留**: 无环境遗留。下一步 M3 笔记核心
+
 ---
 
 ## [S1] 2026-11-08 ｜ 真实环境冒烟测试（首次启动后端）

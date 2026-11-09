@@ -13,7 +13,7 @@
 | E0-1 建库 notehub（utf8mb4） | ✅ root/12345 验证通过 |
 | E0-2 Node 22.23.4 → E:\nodejs（PATH 已配，npm 走 npmmirror） | ✅ |
 | E0-3 schema.sql（14 表）+ seed.sql 执行 | ✅ 2 用户/8 题目/1 题单已入库 |
-| E0-4 Docker 路线跑 Redis | 🔄 **元凶实锤**：MuMu 模拟器 VMM 驱动(MuMuVMMDrv, 2023 版)每次开机回滚 VMP → 已禁用该驱动+重启用 VMP+hypervisor auto(2026-11-08 晚) → **重启后** post-reboot-redis.cmd；fix 日志 E:kadownloadsix-vmp.log |
+| E0-4 Docker 路线跑 Redis | ✅ **2026-11-09 攻克**: 删除 MuMu VMM 驱动后第4次启用 VMP 存活; 引擎 29.9.2; notehub-redis 容器 Up + PONG; restart=unless-stopped; 计划任务 DockerDesktopAutoStart 已设开机自启; 邮件验证码+注册全链路真 Redis 回归通过 |
 | M0 后端骨架（Boot 3.5.16 + common/security/config + JWT 链路） | ✅ 62a5403 |
 | M1 用户模块（注册/登录/验证码队列/资料/管理端列表+封禁, 36 测试全绿） | ✅ c668b6d |
 | M2 题库模块（分类树/题目 CRUD/批量导入/题单/条目排序, 56 测试全绿） | ✅ bf73394 |
