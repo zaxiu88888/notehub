@@ -108,6 +108,11 @@ export default function QuestionPage() {
           <Space size={8} wrap>
             <DifficultyTag difficulty={question.difficulty} />
             <Tag>{question.categoryName ?? '未分类'}</Tag>
+            {question.tags?.map((tag) => (
+              <Link key={tag} to={`/?tag=${encodeURIComponent(tag)}`}>
+                <Tag color="geekblue">{tag}</Tag>
+              </Link>
+            ))}
             {question.examPoint && (
               <Typography.Text type="secondary">考点: {question.examPoint}</Typography.Text>
             )}
@@ -181,6 +186,7 @@ export default function QuestionPage() {
         questionId={questionId}
         noteId={editingNote?.noteId}
         initialContent={editingNote?.content ?? ''}
+        initialTags={editingNote?.tags ?? question.tags}
         onClose={() => setEditorOpen(false)}
         onSaved={load}
       />

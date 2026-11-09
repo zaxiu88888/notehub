@@ -37,6 +37,13 @@
         <where>
             <if test="param.questionId != null">AND n.question_id = #{param.questionId}</if>
             <if test="param.authorId != null">AND n.author_id = #{param.authorId}</if>
+            <if test="param.tag != null and param.tag != ''">
+                AND EXISTS (
+                    SELECT 1 FROM note_tags nt
+                    JOIN tags t ON nt.tag_id = t.tag_id
+                    WHERE nt.note_id = n.note_id AND t.name = #{param.tag}
+                )
+            </if>
         </where>
         <choose>
             <when test="'hot'.equals(param.sort)">
@@ -54,6 +61,13 @@
         <where>
             <if test="param.questionId != null">AND n.question_id = #{param.questionId}</if>
             <if test="param.authorId != null">AND n.author_id = #{param.authorId}</if>
+            <if test="param.tag != null and param.tag != ''">
+                AND EXISTS (
+                    SELECT 1 FROM note_tags nt
+                    JOIN tags t ON nt.tag_id = t.tag_id
+                    WHERE nt.note_id = n.note_id AND t.name = #{param.tag}
+                )
+            </if>
         </where>
     </select>
 

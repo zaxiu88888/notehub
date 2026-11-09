@@ -14,6 +14,7 @@ export function getCategoryTree() {
 export function getQuestions(params: {
   categoryId?: number;
   difficulty?: number;
+  tag?: string;
   page?: number;
   pageSize?: number;
 }) {

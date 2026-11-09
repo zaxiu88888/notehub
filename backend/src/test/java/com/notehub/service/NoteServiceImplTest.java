@@ -12,6 +12,7 @@ import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.entity.Note;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.service.impl.NoteServiceImpl;
+import com.notehub.service.TagService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -41,6 +43,7 @@ class NoteServiceImplTest {
 
     private NoteMapper noteMapper;
     private QuestionMapper questionMapper;
+    private TagService tagService;
     private ApplicationEventPublisher eventPublisher;
     private NoteServiceImpl noteService;
 
@@ -48,9 +51,11 @@ class NoteServiceImplTest {
     void setUp() {
         noteMapper = mock(NoteMapper.class);
         questionMapper = mock(QuestionMapper.class);
+        tagService = mock(TagService.class);
+        when(tagService.tagsByNoteIds(any())).thenReturn(Map.of());
         eventPublisher = mock(ApplicationEventPublisher.class);
         noteService = new NoteServiceImpl(noteMapper, mock(CommentMapper.class),
-                mock(CollectionNoteMapper.class), questionMapper, eventPublisher);
+                mock(CollectionNoteMapper.class), questionMapper, tagService, eventPublisher);
     }
 
     private Note note(long id, long authorId) {
@@ -122,6 +127,8 @@ class NoteServiceImplTest {
         assertEquals(7L, heatmapEvent.authorId());
         assertEquals(LocalDate.now(), heatmapEvent.day());
         assertEquals(1, heatmapEvent.delta());
+        // 未传标签 → 继承题目标签(syncNoteTags 收到 null)
+        verify(tagService).syncNoteTags(100L, 2L, null);
 
         when(noteMapper.selectByAuthorAndQuestion(7L, 2L)).thenReturn(note(10L, 7L));
         BusinessException e = assertThrows(BusinessException.class,
@@ -161,6 +168,7 @@ class NoteServiceImplTest {
         ArgumentCaptor<Long> noteIdCaptor = ArgumentCaptor.forClass(Long.class);
         verify(noteMapper).deleteById(noteIdCaptor.capture());
         assertEquals(10L, noteIdCaptor.getValue());
+        verify(tagService).deleteNoteTags(10L);
     }
 
     @Test

@@ -21,6 +21,13 @@
         <where>
             <if test="param.categoryId != null">AND q.category_id = #{param.categoryId}</if>
             <if test="param.difficulty != null">AND q.difficulty = #{param.difficulty}</if>
+            <if test="param.tag != null and param.tag != ''">
+                AND EXISTS (
+                    SELECT 1 FROM question_tags qt
+                    JOIN tags t ON qt.tag_id = t.tag_id
+                    WHERE qt.question_id = q.question_id AND t.name = #{param.tag}
+                )
+            </if>
         </where>
         ORDER BY q.question_id
         LIMIT #{limit} OFFSET #{offset}
@@ -31,6 +38,13 @@
         <where>
             <if test="param.categoryId != null">AND q.category_id = #{param.categoryId}</if>
             <if test="param.difficulty != null">AND q.difficulty = #{param.difficulty}</if>
+            <if test="param.tag != null and param.tag != ''">
+                AND EXISTS (
+                    SELECT 1 FROM question_tags qt
+                    JOIN tags t ON qt.tag_id = t.tag_id
+                    WHERE qt.question_id = q.question_id AND t.name = #{param.tag}
+                )
+            </if>
         </where>
     </select>
 

@@ -14,6 +14,8 @@ export interface QuestionVO {
   description: string | null;
   difficulty: number;
   examPoint: string | null;
+  /** 由考点同步的标签 */
+  tags: string[];
   viewCount: number;
   createdAt: string;
   /** 我在该题下的笔记(未登录/未写为 null) */

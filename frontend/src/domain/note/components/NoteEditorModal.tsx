@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { App, Button, Col, Input, Modal, Row, Segmented, Space, Typography } from 'antd';
+import { App, Button, Col, Input, Modal, Row, Segmented, Select, Space, Typography } from 'antd';
 import { createNote, updateNote } from '@/domain/note/api';
+import { getTags } from '@/domain/tag/api';
 import { handleAuthError } from '@/request/http';
 import MarkdownView from '@/base/components/MarkdownView';
 
@@ -10,11 +11,15 @@ interface Props {
   /** 有值=编辑, 空=新建 */
   noteId?: number | null;
   initialContent?: string;
+  /** 编辑时为笔记标签; 新建时预填题目标签(后端不传则继承) */
+  initialTags?: string[];
   onClose: () => void;
   onSaved: () => void;
 }
 
 const MAX_LEN = 50000;
+/** 稳定引用: 默认参数若用 [] 会每次渲染新建数组, 触发 effect 死循环 */
+const EMPTY_TAGS: string[] = [];
 
 /** 写/改笔记: 左编辑右预览(或小屏切页签), Ctrl+Enter 快速保存 */
 export default function NoteEditorModal({
@@ -22,30 +27,52 @@ export default function NoteEditorModal({
   questionId,
   noteId,
   initialContent = '',
+  initialTags = EMPTY_TAGS,
   onClose,
   onSaved,
 }: Props) {
   const { message } = App.useApp();
   const [content, setContent] = useState(initialContent);
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const [tagOptions, setTagOptions] = useState<{ value: string; label: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<'split' | 'edit' | 'preview'>('split');
 
   useEffect(() => {
-    if (open) setContent(initialContent);
-  }, [open, initialContent]);
+    if (open) {
+      setContent(initialContent);
+      setTags(initialTags);
+    }
+  }, [open, initialContent, initialTags]);
+
+  useEffect(() => {
+    if (!open) return;
+    getTags(30)
+      .then((list) => setTagOptions(list.map((t) => ({ value: t.name, label: t.name }))))
+      .catch(() => undefined);
+  }, [open]);
 
   const handleSave = async () => {
     if (!content.trim()) {
       message.warning('内容不能为空');
       return;
     }
+    if (tags.length > 5) {
+      message.warning('最多 5 个标签');
+      return;
+    }
     setSaving(true);
     try {
       if (noteId) {
-        await updateNote(noteId, content);
+        await updateNote(noteId, content, tags);
         message.success('笔记已更新');
       } else {
-        await createNote({ questionId, content });
+        await createNote({
+          questionId,
+          content,
+          // 新建时不选标签 → 不传, 后端继承题目标签
+          ...(tags.length > 0 ? { tags } : {}),
+        });
         message.success('笔记已发布');
       }
       onSaved();
@@ -89,6 +116,20 @@ export default function NoteEditorModal({
         <Typography.Text type="secondary" style={{ marginLeft: 12 }}>
           支持 Markdown · Ctrl/⌘ + Enter 保存
         </Typography.Text>
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <Select
+          mode="tags"
+          aria-label="笔记标签"
+          placeholder="选择或输入标签, 最多 5 个 (不选则继承题目标签)"
+          style={{ width: '100%' }}
+          value={tags}
+          onChange={setTags}
+          options={tagOptions}
+          maxCount={5}
+          tokenSeparators={[',', '，']}
+        />
       </div>
 
       <Row gutter={12}>

@@ -61,7 +61,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 
 | 方法 | 路径 | 权限 | 说明 |
 |---|---|---|---|
-| GET | `/questions` | 🌐 | 列表：categoryId、difficulty、page 分页 |
+| GET | `/questions` | 🌐 | 列表：categoryId、difficulty、tag（标签名精确匹配）、page 分页 |
 | GET | `/questions/{id}` | 🌐 | 详情（浏览数 +1；🔒 附 myNote：我在这道题下的笔记） |
 | POST | `/admin/questions` | 👑 | `{categoryId, title, difficulty(1-3), examPoint?, description?}` |
 | POST | `/admin/questions/batch` | 👑 | `{categoryId, markdown}` Markdown 批量导入（模板见 §7） |
@@ -86,13 +86,13 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 
 | 方法 | 路径 | 权限 | 说明 |
 |---|---|---|---|
-| GET | `/notes` | 🌐 | 列表：questionId、authorId 筛选；聚合作者/题目/我的互动状态（防N+1） |
+| GET | `/notes` | 🌐 | 列表：questionId、authorId、tag（标签名精确匹配）筛选；聚合作者/题目/标签/我的互动状态（防N+1） |
 | GET | `/notes/mine?questionId=` | 🔒 | 我在该题下的笔记ID（无则 -1）；个人中心列表用 `GET /notes?authorId=` |
-| POST | `/notes` | 🔒 | `{questionId, content}`（Markdown，≤50000 字） |
-| PATCH | `/notes/{noteId}` | 🔒 | 仅作者（40301） |
+| POST | `/notes` | 🔒 | `{questionId, content, tags?}`（Markdown ≤50000 字；tags 最多 5 个、每个 ≤20 字；不传则继承题目标签） |
+| PATCH | `/notes/{noteId}` | 🔒 | 仅作者（40301）；`{content, tags?}`，tags=null 不改、空数组清空 |
 | DELETE | `/notes/{noteId}` | 🔒 | 仅作者 |
 
-**NoteVO**：`{noteId, content, likeCount, commentCount, collectCount, createdAt, author:{userId,username,avatarUrl}, question:{questionId,title,difficulty}, myActions:{liked,collected}}`（🌐 时 myActions 恒 false）。
+**NoteVO**：`{noteId, content, likeCount, commentCount, collectCount, createdAt, tags:[], author:{userId,username,avatarUrl}, question:{questionId,title,difficulty}, myActions:{liked,collected}}`（🌐 时 myActions 恒 false；无标签时 tags 为空数组）。
 
 ## 7. 批量导入模板（POST /admin/questions/batch）
 ```markdown
@@ -194,5 +194,16 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 - 推送目标按 Principal(userId) 解析, 同一账号多标签页会同时收到
 - 开发期前端经 Vite `/ws` 代理连接后端；生产同源直连
 
+## 16. 标签 /api/tags（I4 已实现）
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `/tags?limit=` | 🌐 | 热门标签 `[{tagId,name,questionCount,noteCount}]`，按关联总数倒序；limit 1..50 默认 20 |
+
+- 题目标签：`questions.exam_point` 为唯一来源，创建/编辑/批量导入时自动拆分（中英文分号）并重建 `question_tags`；题目列表/详情返回 `tags:[name]`
+- 笔记标签：作者可在发布/编辑时选择（≤5 个），新建不传则继承题目标签快照；`GET /notes?tag=` 走 `note_tags` 索引
+- 历史数据回填：`db/migration/I4_tags.sql`（可重复执行）；seed 安装时自动回填题目标签
+- 标签名大小写不敏感去重（collation）；删除题目/笔记只删关联，孤立标签保留但不出现在热门列表
+
 ## 附：MVP 后迭代接口预留（不在本期实现）
-- I4 标签：`GET /tags` `GET /questions?tag=`
+- I5：缓存分层、接口限流、计数去重统计表

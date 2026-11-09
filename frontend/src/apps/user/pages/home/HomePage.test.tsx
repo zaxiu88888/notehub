@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { App as AntApp, ConfigProvider } from 'antd';
@@ -19,9 +19,13 @@ vi.mock('@/domain/note/api', () => ({
   getNotes: vi.fn(),
   getNoteRanklist: vi.fn(),
 }));
+vi.mock('@/domain/tag/api', () => ({
+  getTags: vi.fn(),
+}));
 
 import { getCategoryTree, getQuestions } from '@/domain/question/api';
 import { getNoteRanklist, getNotes } from '@/domain/note/api';
+import { getTags } from '@/domain/tag/api';
 
 const question: QuestionVO = {
   questionId: 2,
@@ -31,6 +35,7 @@ const question: QuestionVO = {
   description: null,
   difficulty: 1,
   examPoint: '数组;哈希表',
+  tags: ['数组', '哈希表'],
   viewCount: 12,
   createdAt: '2026-11-01T00:00:00',
   myNoteId: null,
@@ -44,16 +49,17 @@ const note: NoteVO = {
   commentCount: 1,
   collectCount: 0,
   createdAt: '2026-11-09T10:00:00',
+  tags: ['哈希表'],
   author: { userId: 2, username: '刷题小白', avatarUrl: null },
   question: { questionId: 2, title: '两数之和', difficulty: 1 },
   myActions: { liked: false, collected: false },
 };
 
-function renderHome() {
+function renderHome(initialEntry = '/') {
   const store = configureStore({ reducer: { user: userReducer } });
   return render(
     <Provider store={store}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <ConfigProvider locale={zhCN}>
           <AntApp>
             <HomePage />
@@ -79,6 +85,10 @@ describe('HomePage', () => {
     vi.mocked(getQuestions).mockResolvedValue({ list: [question], page: 1, pageSize: 10, total: 1 });
     vi.mocked(getNotes).mockResolvedValue({ list: [note], page: 1, pageSize: 8, total: 1 });
     vi.mocked(getNoteRanklist).mockResolvedValue([]);
+    vi.mocked(getTags).mockResolvedValue([
+      { tagId: 1, name: '数组', questionCount: 2, noteCount: 0 },
+      { tagId: 2, name: '哈希表', questionCount: 2, noteCount: 1 },
+    ]);
   });
 
   it('渲染题目列表与最新笔记', async () => {
@@ -95,5 +105,13 @@ describe('HomePage', () => {
     renderHome();
 
     expect(await screen.findByText('该筛选条件下暂无题目')).toBeInTheDocument();
+  });
+
+  it('URL ?tag= 初始化题目标签筛选', async () => {
+    renderHome('/?tag=哈希表');
+
+    await waitFor(() =>
+      expect(getQuestions).toHaveBeenCalledWith(expect.objectContaining({ tag: '哈希表' })),
+    );
   });
 });

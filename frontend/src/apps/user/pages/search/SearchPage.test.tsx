@@ -47,6 +47,7 @@ describe('SearchPage', () => {
           commentCount: 0,
           collectCount: 0,
           createdAt: '2026-11-09T10:00:00',
+          tags: ['哈希表'],
           author: { userId: 2, username: '刷题小白', avatarUrl: null },
           question: { questionId: 2, title: '两数之和', difficulty: 1 },
           myActions: { liked: false, collected: false },

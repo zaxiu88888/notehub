@@ -14,6 +14,23 @@
 
 ---
 
+## [I4] 2026-11-09 ｜ 标签体系(tags + question_tags/note_tags 双维度索引)
+
+**做了什么**
+- DB: 新增 tags/question_tags/note_tags(17 表); `db/migration/I4_tags.sql` 可重复执行, 从 questions.exam_point 回填题目标签并让存量笔记继承; seed.sql 新装环境同步回填
+- 后端: Tag 实体/VO/Mapper + TagService(upsert 名称唯一, 大小写不敏感; 题目标签由考点全量重建; 笔记标签默认继承题目); `GET /api/tags` 热门标签(含题/笔记数)
+- 筛选: `GET /questions?tag=` 与 `GET /notes?tag=` 走 EXISTS + (tag_id, owner_id) 索引; NoteVO/QuestionVO 批量补 tags, 与页大小无关
+- 写入: 题目 create/update/batch 同步题目标签; 笔记 create 不传 tags 继承题目, update 传 null 保留/空数组清空; 删除笔记清关联
+- 前端: 首页题目标签筛选(支持 `/?tag=` 深链)、最新笔记标签筛选与标签展示; 笔记卡片/题目页展示标签; 笔记编辑器标签选择(≤5, 可输入新标签, 预填题目标签)
+- 文档: api-contract §16 / technical-design §5.9 / README 路线图 / 表数量 17
+
+**测试门**: 后端 161/161; 前端 36/36; 构建通过
+**冒烟门(真实环境)**: tags 热门列表计数正确 / 题目 tag=哈希表 命中 2 题且排除反转链表 / 笔记 tag=哈希表 命中 1 篇 / 新建笔记继承 [链表,递归,迭代] / 改标签后可检索且旧标签不再命中 / 6 个标签 40001 / 管理员建题考点“链表；队列;链表”去重同步 / 改考点重建 [图,DFS] / 删题后孤立标签不出现在热门列表 / 删除临时笔记后总数还原 2; 浏览器: `/?tag=哈希表` 过滤、笔记卡片标签、题目页标签链接、编辑器预填标签均正常
+**自审门**: 修复 3 处 — ① NoteEditorModal 默认参数 `initialTags=[]` 每次渲染新建数组, effect 死循环(测试挂起暴露) → 提取稳定 EMPTY_TAGS; ② 本地 Vite dev server 长时间运行后 HMR 漏更新, 浏览器仍跑中间版本代码 → 重启 dev server 后复验(环境问题, 已记入 HANDOFF 踩坑); ③ 标签筛选与批量 VO 填充确认均只增加 1 条 SQL, 无 N+1; SQL 全参数化、标签渲染由 React 转义
+**已知**: 删除题目/笔记后孤立标签保留(不展示, 不占热门榜); 题目标签变更后存量笔记标签为快照, 不回溯覆盖(避免冲掉作者自定义)
+**commit**: (本次提交)
+---
+
 ## [I3] 2026-11-09 ｜ 实时通知(WebSocket STOMP 替代 30s 轮询)
 
 **做了什么**

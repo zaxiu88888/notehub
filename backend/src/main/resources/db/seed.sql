@@ -44,3 +44,28 @@ INSERT INTO question_lists (question_list_id, name, type, description) VALUES
 
 INSERT INTO question_list_items (question_list_id, question_id, sort_rank) VALUES
 (1, 2, 1), (1, 1, 2), (1, 4, 3), (1, 3, 4), (1, 6, 5), (1, 5, 6);
+
+-- ---------- 标签回填(把题目 exam_point 拆成标签) ----------
+DROP TEMPORARY TABLE IF EXISTS tmp_tag_seq;
+CREATE TEMPORARY TABLE tmp_tag_seq (n INT PRIMARY KEY);
+INSERT INTO tmp_tag_seq (n) VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10);
+
+DROP TEMPORARY TABLE IF EXISTS tmp_question_tags;
+CREATE TEMPORARY TABLE tmp_question_tags AS
+SELECT q.question_id,
+       TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(q.exam_point, '；', ';'), ';', s.n), ';', -1)) AS name
+FROM questions q
+JOIN tmp_tag_seq s
+  ON s.n <= 1 + CHAR_LENGTH(REPLACE(q.exam_point, '；', ';'))
+            - CHAR_LENGTH(REPLACE(REPLACE(q.exam_point, '；', ';'), ';', ''))
+WHERE q.exam_point IS NOT NULL AND q.exam_point <> '';
+
+DELETE FROM tmp_question_tags WHERE name = '';
+INSERT IGNORE INTO tags (name) SELECT DISTINCT name FROM tmp_question_tags;
+INSERT IGNORE INTO question_tags (question_id, tag_id)
+SELECT x.question_id, t.tag_id FROM tmp_question_tags x JOIN tags t ON t.name = x.name;
+INSERT IGNORE INTO note_tags (note_id, tag_id)
+SELECT n.note_id, qt.tag_id FROM notes n JOIN question_tags qt ON qt.question_id = n.question_id;
+
+DROP TEMPORARY TABLE IF EXISTS tmp_question_tags;
+DROP TEMPORARY TABLE IF EXISTS tmp_tag_seq;

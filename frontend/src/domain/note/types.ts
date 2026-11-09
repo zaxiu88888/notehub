@@ -24,6 +24,8 @@ export interface NoteVO {
   commentCount: number;
   collectCount: number;
   createdAt: string;
+  /** 标签名(无标签为空数组) */
+  tags: string[];
   author: NoteAuthor;
   question: NoteQuestionBrief;
   myActions: MyActions;

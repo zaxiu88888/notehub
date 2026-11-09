@@ -139,6 +139,16 @@ export default function NoteCard({
         </Button>
       )}
 
+      {note.tags?.length > 0 && (
+        <Space size={4} wrap style={{ marginTop: 8 }}>
+          {note.tags.map((tag) => (
+            <Tag key={tag} color="geekblue" style={{ marginInlineEnd: 0 }}>
+              {tag}
+            </Tag>
+          ))}
+        </Space>
+      )}
+
       <Space size={20} style={{ marginTop: 8 }}>
         <Button
           type="text"

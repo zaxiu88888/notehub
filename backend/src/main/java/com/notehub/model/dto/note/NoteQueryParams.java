@@ -12,6 +12,9 @@ public class NoteQueryParams {
 
     private Long authorId;
 
+    /** 标签名(精确匹配, 大小写不敏感) */
+    private String tag;
+
     /** latest=最新(默认) hot=热度(点赞+评论+收藏加权) */
     private String sort = "latest";
 

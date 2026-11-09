@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.NoteTagMapper">
+
+    <delete id="deleteByNoteId">
+        DELETE FROM note_tags WHERE note_id = #{noteId}
+    </delete>
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO note_tags (note_id, tag_id)
+        VALUES (#{noteId}, #{tagId})
+    </insert>
+
+    <select id="selectNamesByNoteIds" resultType="com.notehub.model.dto.tag.TagNameRow">
+        SELECT nt.note_id AS owner_id, t.name
+        FROM note_tags nt
+        JOIN tags t ON nt.tag_id = t.tag_id
+        WHERE nt.note_id IN
+        <foreach collection="noteIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY t.name
+    </select>
+</mapper>

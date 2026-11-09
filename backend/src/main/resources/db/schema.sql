@@ -1,5 +1,5 @@
 -- =====================================================================
--- notehub 数据库结构 v1.0（MVP 14 张表）
+-- notehub 数据库结构 v1.1（17 张表: MVP 14 + I4 标签 3）
 -- 执行: mysql -uroot -p notehub < schema.sql
 -- 约定: 主键 BIGINT UNSIGNED; created_at/updated_at 由数据库维护;
 --       不建物理外键(应用层保证一致性, 索引替代); 唯一约束防重复互动
@@ -195,3 +195,29 @@ CREATE TABLE IF NOT EXISTS statistics (
     updated_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_date (date) COMMENT '每日一条, 定时任务幂等'
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='每日统计';
+
+-- 15. 标签(题目/笔记共用词表; 名称唯一, 大小写不敏感由 collation 保证)
+CREATE TABLE IF NOT EXISTS tags (
+    tag_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(32) NOT NULL COMMENT '标签名',
+    created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_name (name)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='标签';
+
+-- 16. 题目-标签(题目标签由 exam_point 自动同步)
+CREATE TABLE IF NOT EXISTS question_tags (
+    question_id BIGINT UNSIGNED NOT NULL,
+    tag_id      BIGINT UNSIGNED NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_question_tag (question_id, tag_id),
+    KEY idx_tag_question (tag_id, question_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='题目-标签';
+
+-- 17. 笔记-标签(作者可选, 默认继承题目标签快照)
+CREATE TABLE IF NOT EXISTS note_tags (
+    note_id    BIGINT UNSIGNED NOT NULL,
+    tag_id     BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_note_tag (note_id, tag_id),
+    KEY idx_tag_note (tag_id, note_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='笔记-标签';

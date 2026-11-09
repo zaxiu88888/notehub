@@ -70,7 +70,7 @@ public class NoteController {
     @NeedLogin
     public ApiResponse<Map<String, Long>> create(@Valid @RequestBody NoteContentBody body) {
         Long noteId = noteService.createNote(requestContext.requireUserId(),
-                body.getQuestionId(), body.getContent());
+                body.getQuestionId(), body.getContent(), body.getTags());
         return ApiResponse.ok("发布成功", Map.of("noteId", noteId));
     }
 
@@ -78,7 +78,8 @@ public class NoteController {
     @NeedLogin
     public ApiResponse<Void> update(@PathVariable Long noteId,
                                     @Valid @RequestBody NoteUpdateBody body) {
-        noteService.updateNote(noteId, requestContext.requireUserId(), body.getContent());
+        noteService.updateNote(noteId, requestContext.requireUserId(),
+                body.getContent(), body.getTags());
         return ApiResponse.ok();
     }
 

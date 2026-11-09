@@ -3,6 +3,7 @@ package com.notehub.model.vo.note;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 笔记视图: 聚合作者摘要+题目摘要+我的互动状态
@@ -23,6 +24,9 @@ public class NoteVO {
     private Integer collectCount;
 
     private LocalDateTime createdAt;
+
+    /** 标签名(无标签为空列表) */
+    private List<String> tags;
 
     private AuthorVO author;
 

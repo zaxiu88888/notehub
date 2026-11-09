@@ -13,12 +13,14 @@ import com.notehub.model.entity.Question;
 import com.notehub.model.vo.question.BatchImportResultVO;
 import com.notehub.model.vo.question.QuestionVO;
 import com.notehub.service.impl.QuestionServiceImpl;
+import com.notehub.service.TagService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -38,6 +40,7 @@ class QuestionServiceImplTest {
     private QuestionMapper questionMapper;
     private CategoryMapper categoryMapper;
     private NoteMapper noteMapper;
+    private TagService tagService;
     private QuestionServiceImpl questionService;
 
     @BeforeEach
@@ -45,7 +48,10 @@ class QuestionServiceImplTest {
         questionMapper = mock(QuestionMapper.class);
         categoryMapper = mock(CategoryMapper.class);
         noteMapper = mock(NoteMapper.class);
-        questionService = new QuestionServiceImpl(questionMapper, categoryMapper, noteMapper);
+        tagService = mock(TagService.class);
+        when(tagService.tagsByQuestionIds(any())).thenReturn(Map.of());
+        when(tagService.questionTags(anyLong())).thenReturn(List.of());
+        questionService = new QuestionServiceImpl(questionMapper, categoryMapper, noteMapper, tagService);
     }
 
     private Category category() {
@@ -158,8 +164,9 @@ class QuestionServiceImplTest {
         }).when(questionMapper).insert(any(Question.class));
         when(questionMapper.selectById(300L)).thenReturn(question());
 
-        questionService.create(10L, "新题", 1, null, null);
+        questionService.create(10L, "新题", 1, "数组;哈希表", null);
         verify(questionMapper).insert(any(Question.class));
+        verify(tagService).syncQuestionTags(300L, "数组;哈希表");
 
         when(categoryMapper.selectById(999L)).thenReturn(null);
         BusinessException e = assertThrows(BusinessException.class,

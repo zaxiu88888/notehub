@@ -28,7 +28,7 @@
         │              │               │
    ┌────▼────┐   ┌─────▼─────┐   ┌─────▼─────┐
    │ MySQL 8 │   │ Redis 7   │   │ 本地磁盘   │
-   │ 14 张表  │   │ 缓存/队列/限流│  │ uploads/  │
+   │ 17 张表  │   │ 缓存/队列/限流│  │ uploads/  │
    └─────────┘   └───────────┘   └───────────┘
 ```
 
@@ -87,7 +87,7 @@ com.notehub
 ├── service/ + impl/   # 17 个接口
 ├── mapper/            # 14 个接口 + resources/mapper/*.xml
 ├── model/
-│   ├── entity/  # 14 张表对应
+│   ├── entity/  # 17 张表对应
 │   ├── dto/     # 请求体（@Valid 校验）
 │   ├── vo/      # 响应体
 │   └── enums/   # RedisKey、MessageType 等
@@ -101,7 +101,7 @@ com.notehub
 
 **与原项目（卡码笔记）的关键差异**：admin 接口补 `@NeedAdmin`（原项目裸奔）；事件有真监听者（原项目只定义未使用）；删除遗留废表 note_comment。
 
-## 4. 数据库设计（首版 14 张表，MySQL 8，utf8mb4）
+## 4. 数据库设计（17 张表，MySQL 8，utf8mb4）
 
 > 完整 DDL 见 `backend/src/main/resources/db/schema.sql`（E0 阶段执行）。
 
@@ -121,12 +121,15 @@ com.notehub
 | comment_likes | comment_id, user_id | uk(comment,user) |
 | messages | message_id PK, receiver_id, sender_id, type(1赞/2评/3系统), target_id, target_type, content, is_read | idx_receiver_read |
 | statistics | id PK, login_count, register_count, total_register_count, note_count, submit_note_count, total_note_count, date UK | uk_date |
+| tags | tag_id PK, name UK | uk_name |
+| question_tags | question_id, tag_id | uk(question,tag), idx_tag_question |
+| note_tags | note_id, tag_id | uk(note,tag), idx_tag_note |
 
 **设计要点**：
 - 计数列（like_count 等）冗余存储，更新用原子 `UPDATE ... SET x = x + 1 WHERE ...`（answer Issue #1646 教训）；唯一约束防重复点赞/收藏
 - 所有表 `created_at / updated_at` 由 SQL `DEFAULT CURRENT_TIMESTAMP / ON UPDATE` 维护
 - 不设物理外键（应用层保证一致性，便于分表迁移），加索引替代
-- 预留（迭代期加）：`tags` + `note_tags`（I4）、`notes.search_vector` FULLTEXT ngram（I1）、邮件开关配置走 yaml 不进表
+- 已完成迭代：`notes.search_vector` FULLTEXT ngram（I1）、`tags`/`question_tags`/`note_tags`（I4）；邮件开关配置走 yaml 不进表
 
 ## 5. 核心流程设计
 
@@ -260,6 +263,21 @@ frontend/src/
 ```
 
 > 只推送计数不推送消息体：消息页仍按需分页拉取，推送链路轻且不会把私密内容广播到错误会话。
+
+## 5.9 标签体系（I4）
+
+```
+词表: tags(tag_id, name UK)  名称大小写不敏感(utf8mb4_unicode_ci)
+题目: questions.exam_point(分号分隔) 为唯一来源
+      create/update/batch → TagUtils.splitExamPoints → tags upsert → 重建 question_tags
+笔记: 作者可选 ≤5 个(每个 ≤20 字); 新建不传 → 快照继承题目标签
+      更新传 null 保留、空数组清空
+索引: question_tags(tag_id, question_id) / note_tags(tag_id, note_id)
+查询: GET /questions?tag= / GET /notes?tag= 用 EXISTS 子查询命中索引
+列表: NoteVO/QuestionVO 批量补 tags(一条 IN 查询, 防 N+1)
+```
+
+> 题目标签刻意复用已有的 `exam_point`，管理端无需新增维护入口；标签为自动创建的词表，删除关联后孤立标签保留但不展示。
 
 ## 8. 安全设计清单
 - 密码 BCrypt（强度默认 10）；JWT HS256 + 30 天过期 + local.yaml 密钥

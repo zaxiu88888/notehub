@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.QuestionTagMapper">
+
+    <delete id="deleteByQuestionId">
+        DELETE FROM question_tags WHERE question_id = #{questionId}
+    </delete>
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO question_tags (question_id, tag_id)
+        VALUES (#{questionId}, #{tagId})
+    </insert>
+
+    <select id="selectNamesByQuestionId" resultType="string">
+        SELECT t.name
+        FROM question_tags qt
+        JOIN tags t ON qt.tag_id = t.tag_id
+        WHERE qt.question_id = #{questionId}
+        ORDER BY t.name
+    </select>
+
+    <select id="selectNamesByQuestionIds" resultType="com.notehub.model.dto.tag.TagNameRow">
+        SELECT qt.question_id AS owner_id, t.name
+        FROM question_tags qt
+        JOIN tags t ON qt.tag_id = t.tag_id
+        WHERE qt.question_id IN
+        <foreach collection="questionIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY t.name
+    </select>
+</mapper>

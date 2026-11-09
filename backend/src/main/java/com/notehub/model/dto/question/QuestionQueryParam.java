@@ -13,6 +13,9 @@ public class QuestionQueryParam {
     /** 1简单 2中等 3困难 */
     private Integer difficulty;
 
+    /** 标签名(精确匹配, 大小写不敏感) */
+    private String tag;
+
     private int page = 1;
 
     private int pageSize = 10;

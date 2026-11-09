@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.TagMapper">
+
+    <!-- 名称唯一: 不存在则插入; 已存在则把 tag_id 设为 LAST_INSERT_ID, 回填到实体 -->
+    <insert id="upsert" useGeneratedKeys="true" keyProperty="tagId" keyColumn="tag_id">
+        INSERT INTO tags (name) VALUES (#{name})
+        ON DUPLICATE KEY UPDATE tag_id = LAST_INSERT_ID(tag_id)
+    </insert>
+
+    <select id="selectByName" resultType="com.notehub.model.entity.Tag">
+        SELECT tag_id, name, created_at FROM tags WHERE name = #{name}
+    </select>
+
+    <select id="selectPopular" resultType="com.notehub.model.vo.tag.TagVO">
+        SELECT t.tag_id, t.name,
+               (SELECT COUNT(*) FROM question_tags qt WHERE qt.tag_id = t.tag_id) AS question_count,
+               (SELECT COUNT(*) FROM note_tags nt WHERE nt.tag_id = t.tag_id)     AS note_count
+        FROM tags t
+        WHERE EXISTS (SELECT 1 FROM question_tags qt WHERE qt.tag_id = t.tag_id)
+           OR EXISTS (SELECT 1 FROM note_tags nt WHERE nt.tag_id = t.tag_id)
+        ORDER BY (question_count + note_count) DESC, t.name
+        LIMIT #{limit}
+    </select>
+</mapper>

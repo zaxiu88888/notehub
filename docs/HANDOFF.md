@@ -1,7 +1,7 @@
 # HANDOFF —— 会话交接文档
 
 > 接手必读。本文件始终反映项目最新状态；每干一步由执行者刷新。
-> 最后更新：2026-11-09（I3 实时通知完成）
+> 最后更新：2026-11-09（I4 标签体系完成）
 
 ## 项目一句话
 仿「卡码笔记」的刷题+笔记社区全栈项目（求职用），MVP=初始框架，按迭代路线逐步补齐并超越原项目。
@@ -22,15 +22,16 @@
 | S4 独立复测 3×P1 + 9×P2 缺陷修复 | ✅ 3a463b4 |
 | I1 搜索（FULLTEXT ngram + Jieba + Redis 缓存 + 前端搜索页） | ✅ cd41fc3 |
 | I2 数据可视化（热力图/热度榜/数据卡片/Markdown 导出） | ✅ 66ef081 |
-| I3 实时通知（WebSocket STOMP 未读推送，替代 30s 轮询） | ✅ 本次完成 |
+| I3 实时通知（WebSocket STOMP 未读推送，替代 30s 轮询） | ✅ 52239f4 |
+| I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 本次完成 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**153/153**
-- 前端 `npm test`：**34/34**；`npm run build` 通过
-- 真实环境冒烟：I2 四接口 + 页面；I3 STOMP 推送/鉴权/越权订阅 + 浏览器实时角标/多标签页同步 全部通过
+- 后端 `mvn test`：**161/161**
+- 前端 `npm test`：**36/36**；`npm run build` 通过
+- 真实环境冒烟：I2/I3/I4 全部通过（I4：标签筛选/继承/重建/非法输入/清理 + 浏览器标签筛选与编辑器预填）
 
 ## 下一步（按优先级，可自选）
-- **I4 标签体系**：tags + note_tags，题目/笔记双维度索引
+- **I5 深化**：多级缓存、接口限流、计数去重统计表、上传旧文件清理
 - **I5 深化**：多级缓存、接口限流、计数去重统计表、上传旧文件清理
 - **I6 拓展**：AI 题解总结、打卡 streak
 - 已知限制见 `docs/test-report.md` §6 与各里程碑日志的“已知限制”
@@ -45,16 +46,18 @@
 6. 敏感配置全部 application-local.yaml（gitignore），绝不硬编码入库
 7. I2：热力图 Redis 位图（每天 u8）+ 事件增量 + 1h TTL 回填；热度榜公共数据缓存 5min；导出为 Markdown 附件
 8. I3：STOMP 只推未读计数不推消息体；JWT 放 CONNECT 头；只允许订阅 `/user/queue/**`；前端 5s 重连 + 重连后 HTTP 补拉
+9. I4：题目标签唯一来源是 `exam_point`（不新增管理入口）；笔记标签默认继承题目标签快照，作者可改；标签自动建词表
 
 ## 工作纪律（每步必须）
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
 
 ## 如何运行
-- 数据库已就绪：notehub 库 + 14 表 + 种子数据（admin/admin123 管理员、demo/user123456）
+- 数据库已就绪：notehub 库 + 17 表 + 种子数据（admin/admin123 管理员、demo/user123456）；I4 标签表与回填见 `db/migration/I4_tags.sql`
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（153，无需 DB/Redis）；`npm test`（34）/ `npm run build`
+- 测试：`mvn test`（161，无需 DB/Redis）；`npm test`（36）/ `npm run build`
+- I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`；迁移 `db/migration/I4_tags.sql` 已在本机执行
 - WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
 - **dev 邮件联调**：mail.verify-code.enabled=false 时 GET /api/email/verify-code 返回 devCode；Redis 不可用时邮件/注册不可用
 - I2 接口：`/api/notes/heatmap`、`/api/notes/ranklist`、`/api/notes/top3count`、`/api/notes/download` —— 契约见 docs/api-contract.md §14
@@ -82,6 +85,7 @@
 - WSL/VMware 类提示输出是 UTF-16LE，`iconv -f UTF-16LE -t UTF-8` 转码可读
 - **`wsl --install` 不等于 VirtualMachinePlatform 已启用**；DISM 3010 后仍可能被回滚（本机发生过两次，元凶= MuMu 模拟器 VMM 驱动 MuMuVMMDrv 与 VMP 互斥，每次开机回滚；已禁用。想玩 MuMu：管理员运行 `sc config MuMuVMMDrv start= demand` 改回，代价是 Docker/WSL2 失效）→ 用 PowerShell `Enable-WindowsOptionalFeature` 启用 + `bcdedit /set hypervisorlaunchtype auto` 双保险；ps1 脚本含中文必须 UTF-8 带 BOM，否则 PowerShell 5.1 按 GBK 读会解析爆炸（报“字符串缺少终止符”）
 - Docker Desktop `--installation-dir=E:\docker` 是直装根目录：docker.exe 在 `E:\docker\resources\bin\`，GUI 在 `E:\docker\Docker Desktop.exe`
+- **Vite dev server 长时间运行后偶发 HMR 漏更新**（浏览器仍执行中间版本代码，接口已变但页面不显示）：重启 `npm run dev` 并刷新页面即可；判断方法：在页面里 fetch `/src/...` 检查源码是否包含最新字符串
 - **Docker Desktop 已汉化**（用户需求，2026-11-08）：项目 [asxez/DockerDesktop-CN](https://github.com/asxez/DockerDesktop-CN) 4.98.0 版完美匹配；替换 `E:\docker\frontend\resources\app.asar(+unpacked)`，**原版备份在同目录 `*.en.bak`**；汉化资产归档于 `E:\docker\plugin\`
 
 ## 远程仓库

@@ -14,6 +14,7 @@ import com.notehub.model.entity.Note;
 import com.notehub.model.entity.Question;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.service.NoteService;
+import com.notehub.service.TagService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -39,15 +40,17 @@ public class NoteServiceImpl implements NoteService {
     private final CommentMapper commentMapper;
     private final CollectionNoteMapper collectionNoteMapper;
     private final QuestionMapper questionMapper;
+    private final TagService tagService;
     private final ApplicationEventPublisher eventPublisher;
 
     public NoteServiceImpl(NoteMapper noteMapper, CommentMapper commentMapper,
                            CollectionNoteMapper collectionNoteMapper, QuestionMapper questionMapper,
-                           ApplicationEventPublisher eventPublisher) {
+                           TagService tagService, ApplicationEventPublisher eventPublisher) {
         this.noteMapper = noteMapper;
         this.commentMapper = commentMapper;
         this.collectionNoteMapper = collectionNoteMapper;
         this.questionMapper = questionMapper;
+        this.tagService = tagService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -70,7 +73,8 @@ public class NoteServiceImpl implements NoteService {
     }
 
     @Override
-    public Long createNote(Long authorId, Long questionId, String content) {
+    @Transactional
+    public Long createNote(Long authorId, Long questionId, String content, List<String> tags) {
         Question question = questionMapper.selectById(questionId);
         if (question == null) {
             throw BusinessException.of(ErrorCode.NOT_FOUND, "题目不存在");
@@ -84,6 +88,8 @@ public class NoteServiceImpl implements NoteService {
         note.setContent(content);
         note.setSearchVector(buildSearchVector(question.getTitle(), content));
         noteMapper.insert(note);
+        // 笔记标签: 未传则继承题目标签
+        tagService.syncNoteTags(note.getNoteId(), questionId, tags);
         // 热力图增量(位图已建立时生效, 否则等下次读取时回填)
         eventPublisher.publishEvent(new NoteHeatmapEvent(this, authorId, LocalDate.now(), 1));
         log.info("[笔记] 发布: noteId={}, author={}, question={}", note.getNoteId(), authorId, questionId);
@@ -91,13 +97,18 @@ public class NoteServiceImpl implements NoteService {
     }
 
     @Override
-    public void updateNote(Long noteId, Long operatorId, String content) {
+    @Transactional
+    public void updateNote(Long noteId, Long operatorId, String content, List<String> tags) {
         Note note = requireNote(noteId);
         if (!note.getAuthorId().equals(operatorId)) {
             throw BusinessException.of(ErrorCode.FORBIDDEN, "只能编辑自己的笔记");
         }
         noteMapper.updateContent(noteId, content,
                 buildSearchVector(note.getQuestionTitle(), content));
+        // tags=null 表示旧客户端未传, 保留原标签
+        if (tags != null) {
+            tagService.syncNoteTags(noteId, note.getQuestionId(), tags);
+        }
     }
 
     @Override
@@ -110,6 +121,7 @@ public class NoteServiceImpl implements NoteService {
         // 连带清理: 软删评论 + 清空收藏夹条目(点赞记录随笔记物理删除自然消失)
         commentMapper.softDeleteByNoteId(noteId);
         collectionNoteMapper.deleteByNoteId(noteId);
+        tagService.deleteNoteTags(noteId);
         noteMapper.deleteById(noteId);
         LocalDate publishedDay = note.getCreatedAt() == null
                 ? LocalDate.now() : note.getCreatedAt().toLocalDate();
@@ -165,18 +177,19 @@ public class NoteServiceImpl implements NoteService {
         return note;
     }
 
-    /** 批量组装: 主列表已联表作者/题目, 这里只补互动状态(登录时 2 条 IN 查询) */
+    /** 批量组装: 主列表已联表作者/题目, 这里批量补互动状态与标签(与页大小无关) */
     private List<NoteVO> toVOs(List<Note> notes, Long currentUserId) {
+        List<Long> ids = notes.isEmpty() ? List.of() : notes.stream().map(Note::getNoteId).toList();
         Set<Long> likedIds;
         Set<Long> collectedIds;
-        if (currentUserId != null && !notes.isEmpty()) {
-            List<Long> ids = notes.stream().map(Note::getNoteId).toList();
+        if (currentUserId != null && !ids.isEmpty()) {
             likedIds = new HashSet<>(noteMapper.selectLikedNoteIds(currentUserId, ids));
             collectedIds = new HashSet<>(noteMapper.selectCollectedNoteIds(currentUserId, ids));
         } else {
             likedIds = Set.of();
             collectedIds = Set.of();
         }
+        Map<Long, List<String>> tagsByNote = tagService.tagsByNoteIds(ids);
         final Set<Long> liked = likedIds;
         final Set<Long> collected = collectedIds;
         return notes.stream().map(note -> {
@@ -188,6 +201,7 @@ public class NoteServiceImpl implements NoteService {
             vo.setCommentCount(note.getCommentCount());
             vo.setCollectCount(note.getCollectCount());
             vo.setCreatedAt(note.getCreatedAt());
+            vo.setTags(tagsByNote.getOrDefault(note.getNoteId(), List.of()));
 
             NoteVO.AuthorVO author = new NoteVO.AuthorVO();
             author.setUserId(note.getAuthorId());

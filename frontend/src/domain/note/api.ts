@@ -17,6 +17,7 @@ import type {
 export function getNotes(params: {
   questionId?: number;
   authorId?: number;
+  tag?: string;
   sort?: 'latest' | 'hot';
   page?: number;
   pageSize?: number;
@@ -28,12 +29,16 @@ export function getNote(noteId: number) {
   return request<NoteVO>({ url: `/api/notes/${noteId}`, method: 'GET' });
 }
 
-export function createNote(body: { questionId: number; content: string }) {
+export function createNote(body: { questionId: number; content: string; tags?: string[] }) {
   return request<{ noteId: number }>({ url: '/api/notes', method: 'POST', data: body });
 }
 
-export function updateNote(noteId: number, content: string) {
-  return request<void>({ url: `/api/notes/${noteId}`, method: 'PATCH', data: { content } });
+export function updateNote(noteId: number, content: string, tags?: string[]) {
+  return request<void>({
+    url: `/api/notes/${noteId}`,
+    method: 'PATCH',
+    data: { content, tags },
+  });
 }
 
 export function deleteNote(noteId: number) {

@@ -15,12 +15,13 @@ import {
   Typography,
 } from 'antd';
 import { CommentOutlined, FireOutlined, LikeOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import DifficultyTag from '@/base/components/DifficultyTag';
 import { getCategoryTree, getQuestions } from '@/domain/question/api';
 import type { CategoryVO, QuestionVO } from '@/domain/question/types';
 import { getNotes } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
+import { getTags } from '@/domain/tag/api';
 import RankListCard from '@/domain/note/components/RankListCard';
 import { ApiError } from '@/request/http';
 import dayjs from 'dayjs';
@@ -42,9 +43,13 @@ function flattenCategories(tree: CategoryVO[], depth = 0): FlatCategory[] {
 /** 首页: 左侧题库(可筛选), 右侧社区最新笔记 */
 export default function HomePage() {
   const { message } = App.useApp();
+  const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState<FlatCategory[]>([]);
+  const [tagOptions, setTagOptions] = useState<{ value: string; label: string }[]>([]);
   const [categoryId, setCategoryId] = useState<number | undefined>();
   const [difficulty, setDifficulty] = useState<number | undefined>();
+  const [tag, setTag] = useState<string | undefined>(searchParams.get('tag') ?? undefined);
+  const [noteTag, setNoteTag] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [questions, setQuestions] = useState<QuestionVO[]>([]);
   const [total, setTotal] = useState(0);
@@ -57,10 +62,16 @@ export default function HomePage() {
       .catch(() => message.error('分类加载失败, 请确认后端已启动'));
   }, [message]);
 
+  useEffect(() => {
+    getTags(30)
+      .then((tags) => setTagOptions(tags.map((t) => ({ value: t.name, label: t.name }))))
+      .catch(() => undefined);
+  }, []);
+
   const loadQuestions = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getQuestions({ categoryId, difficulty, page, pageSize: PAGE_SIZE });
+      const data = await getQuestions({ categoryId, difficulty, tag, page, pageSize: PAGE_SIZE });
       setQuestions(data.list);
       setTotal(data.total);
     } catch (e) {
@@ -68,19 +79,19 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [categoryId, difficulty, page, message]);
+  }, [categoryId, difficulty, tag, page, message]);
 
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
 
   useEffect(() => {
-    getNotes({ page: 1, pageSize: 8, sort: 'latest' })
+    getNotes({ page: 1, pageSize: 8, sort: 'latest', tag: noteTag })
       .then((data) => setNotes(data.list))
       .catch(() => {
         /* 未登录也可看笔记流, 失败静默(题目区已有错误提示) */
       });
-  }, []);
+  }, [noteTag]);
 
   const handleFilterChange = (nextCategory?: number, nextDifficulty?: number) => {
     setCategoryId(nextCategory);
@@ -121,6 +132,19 @@ export default function HomePage() {
                   { value: 2, label: '中等' },
                   { value: 3, label: '困难' },
                 ]}
+              />
+              <Select
+                allowClear
+                showSearch
+                aria-label="标签筛选"
+                placeholder="标签"
+                style={{ width: 120 }}
+                value={tag}
+                options={tagOptions}
+                onChange={(v) => {
+                  setTag(v);
+                  setPage(1);
+                }}
               />
             </Space>
           }
@@ -178,7 +202,23 @@ export default function HomePage() {
 
       <Col xs={24} lg={9}>
         <Space direction="vertical" size={24} style={{ width: '100%' }}>
-          <Card title="最新笔记" styles={{ body: { paddingTop: 8 } }}>
+          <Card
+            title="最新笔记"
+            styles={{ body: { paddingTop: 8 } }}
+            extra={
+              <Select
+                allowClear
+                showSearch
+                size="small"
+                aria-label="笔记标签筛选"
+                placeholder="标签"
+                style={{ width: 110 }}
+                value={noteTag}
+                options={tagOptions}
+                onChange={setNoteTag}
+              />
+            }
+          >
             <List
               dataSource={notes}
               locale={{ emptyText: <Empty description="还没有人写笔记, 来做第一个吧" /> }}
@@ -201,6 +241,15 @@ export default function HomePage() {
                         >
                           {note.content}
                         </Typography.Paragraph>
+                        {note.tags?.length > 0 && (
+                          <Space size={4} wrap>
+                            {note.tags.map((t) => (
+                              <Tag key={t} color="geekblue" style={{ marginInlineEnd: 0 }}>
+                                {t}
+                              </Tag>
+                            ))}
+                          </Space>
+                        )}
                         <Space size={12} style={{ color: '#8c8c8c', fontSize: 12 }}>
                           <span>
                             <LikeOutlined /> {note.likeCount}
