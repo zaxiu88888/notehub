@@ -7,6 +7,7 @@ import com.notehub.model.dto.message.MessageQueryParams;
 import com.notehub.model.vo.message.MessageVO;
 import com.notehub.security.NeedLogin;
 import com.notehub.service.MessageService;
+import com.notehub.service.UnreadPushService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
@@ -29,10 +30,13 @@ import java.util.Map;
 public class MessageController {
 
     private final MessageService messageService;
+    private final UnreadPushService unreadPushService;
     private final RequestContext requestContext;
 
-    public MessageController(MessageService messageService, RequestContext requestContext) {
+    public MessageController(MessageService messageService, UnreadPushService unreadPushService,
+                             RequestContext requestContext) {
         this.messageService = messageService;
+        this.unreadPushService = unreadPushService;
         this.requestContext = requestContext;
     }
 
@@ -51,28 +55,36 @@ public class MessageController {
     @PatchMapping("/{messageId}/read")
     @NeedLogin
     public ApiResponse<Void> markRead(@PathVariable Long messageId) {
-        messageService.markRead(requestContext.requireUserId(), messageId);
+        Long userId = requestContext.requireUserId();
+        messageService.markRead(userId, messageId);
+        unreadPushService.pushUnread(userId);
         return ApiResponse.ok();
     }
 
     @PatchMapping("/all/read")
     @NeedLogin
     public ApiResponse<Void> markAllRead() {
-        messageService.markAllRead(requestContext.requireUserId());
+        Long userId = requestContext.requireUserId();
+        messageService.markAllRead(userId);
+        unreadPushService.pushUnread(userId);
         return ApiResponse.ok();
     }
 
     @PatchMapping("/batch/read")
     @NeedLogin
     public ApiResponse<Void> markBatchRead(@Valid @RequestBody BatchReadBody body) {
-        messageService.markBatchRead(requestContext.requireUserId(), body.getMessageIds());
+        Long userId = requestContext.requireUserId();
+        messageService.markBatchRead(userId, body.getMessageIds());
+        unreadPushService.pushUnread(userId);
         return ApiResponse.ok();
     }
 
     @DeleteMapping("/{messageId}")
     @NeedLogin
     public ApiResponse<Void> delete(@PathVariable Long messageId) {
-        messageService.deleteMessage(requestContext.requireUserId(), messageId);
+        Long userId = requestContext.requireUserId();
+        messageService.deleteMessage(userId, messageId);
+        unreadPushService.pushUnread(userId);
         return ApiResponse.ok();
     }
 

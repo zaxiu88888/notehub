@@ -131,7 +131,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/messages` | 列表 `type`(1赞/2评/3系统) 筛选分页；MessageVO 含发送者摘要+目标摘要 |
-| GET | `/messages/unread/count` | `{total, like, comment, system}` 分类型未读数（前端 30s 轮询） |
+| GET | `/messages/unread/count` | `{total, like, comment, system}` 分类型未读数（I3 起由 WebSocket 实时推送，本接口用于连接/重连补齐与消息页加载） |
 | PATCH | `/messages/{messageId}/read` | 单条已读 |
 | PATCH | `/messages/all/read` | 全部已读（非本人消息操作返回 40401） |
 | PATCH | `/messages/batch/read` | `{messageIds:[]}` |
@@ -180,6 +180,19 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 - 热度榜 `hotScore = 赞*2 + 评论*3 + 收藏*2`；窗口榜单按互动记录时间过滤，结果缓存 5 分钟（公共数据）
 - 导出响应 `Content-Type: text/markdown;charset=UTF-8`，`Content-Disposition: attachment`
 
+## 15. 实时通知 WebSocket（I3 已实现）
+
+| 项 | 说明 |
+|---|---|
+| 端点 | `ws://{host}/ws`（原生 WebSocket + STOMP 1.2，无 SockJS） |
+| 鉴权 | STOMP `CONNECT` 原生头 `Authorization: Bearer <jwt>`（也兼容 `token` 头）；无效 token 返回 ERROR 并断开 |
+| 订阅 | `/user/queue/unread`（仅允许 `/user/queue/**`，其他订阅/客户端 SEND 一律拒绝） |
+| 推送载荷 | `{total, like, comment, system}`，与 `GET /messages/unread/count` 一致 |
+| 触发时机 | 新消息落库（点赞/评论通知）、单条/批量/全部已读、删除消息 |
+| 断线 | 前端 5s 自动重连；每次连接/重连后用 HTTP 补拉一次未读数 |
+
+- 推送目标按 Principal(userId) 解析, 同一账号多标签页会同时收到
+- 开发期前端经 Vite `/ws` 代理连接后端；生产同源直连
+
 ## 附：MVP 后迭代接口预留（不在本期实现）
-- I3 WebSocket：`/ws` STOMP 端点（未读推送，替代轮询）
 - I4 标签：`GET /tags` `GET /questions?tag=`

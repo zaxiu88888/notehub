@@ -2,6 +2,7 @@ package com.notehub.event;
 
 import com.notehub.mapper.MessageMapper;
 import com.notehub.model.entity.Message;
+import com.notehub.service.UnreadPushService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -18,9 +19,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class InteractionEventListener {
 
     private final MessageMapper messageMapper;
+    private final UnreadPushService unreadPushService;
 
-    public InteractionEventListener(MessageMapper messageMapper) {
+    public InteractionEventListener(MessageMapper messageMapper,
+                                    UnreadPushService unreadPushService) {
         this.messageMapper = messageMapper;
+        this.unreadPushService = unreadPushService;
     }
 
     @Async
@@ -37,6 +41,8 @@ public class InteractionEventListener {
             messageMapper.insert(message);
             log.debug("[消息] 已投递: receiver={}, type={}, target={}",
                     event.getReceiverId(), event.getType(), event.getTargetId());
+            // 在线用户实时更新角标(离线时推送被简单代理忽略)
+            unreadPushService.pushUnread(event.getReceiverId());
         } catch (Exception e) {
             // 消息失败不影响主流程(点赞/评论已成功), 记日志即可
             log.error("[消息] 投递失败: receiver={}, target={}, err={}",

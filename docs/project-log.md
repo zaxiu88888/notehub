@@ -14,6 +14,22 @@
 
 ---
 
+## [I3] 2026-11-09 ｜ 实时通知(WebSocket STOMP 替代 30s 轮询)
+
+**做了什么**
+- 后端: `spring-boot-starter-websocket`; `/ws` STOMP 端点(无 SockJS); `StompAuthChannelInterceptor` 在 CONNECT 帧校验 JWT 并绑定 Principal, 只允许 `/user/queue/**` 订阅、拒绝客户端 SEND
+- 推送: `UnreadPushService` → `convertAndSendToUser(userId, "/queue/unread", {total,like,comment,system})`; 触发点 = 新消息落库(InteractionEventListener) + 单条/批量/全部已读 + 删除(MessageController)
+- 配置: `app.ws.allowed-origins` 来源白名单; 前端 Vite `/ws` 代理(ws:true)
+- 前端: `@stomp/stompjs` 客户端(5s 自动重连); `notificationSlice` 统一维护未读角标; 布局移除 30s 轮询, 连接/重连后 HTTP 补拉一次; 消息页已读/删除同步 store
+- 测试: 后端 +9(Stomp 鉴权 5 / 推送 2 / 监听 2) = 153; 前端 +5(notificationSlice 3 / socket 2) = 34
+
+**测试门**: 后端 153/153; 前端 34/34; 构建通过
+**冒烟门(真实环境)**: 原生 STOMP 脚本 — 合法连接 CONNECTED / admin 点赞后 demo 实时收到 total+1 / 全部已读推送 total=0 / 无 token 连接 ERROR / 越权订阅 ERROR; 浏览器 — Vite 代理下角标实时 +1; 打开第二个标签页后, 全部已读推送使两页角标同时清零; 测试消息/点赞/已读状态已还原种子数据
+**自审门**: 修复 3 处 — ① 无 token CONNECT 在 mock 返回 0 时未被拒(测试暴露), 增加 `userId <= 0` 防御; ② 鉴权失败会无限重连 → `onStompError` 主动 deactivate; ③ 消息页与布局各自持有未读状态, 已读后角标可能滞后 → 统一收敛到 notificationSlice
+**已知**: 只推送计数不推送消息体(消息列表仍需进入页面拉取); 未读数每次推送查 3 条 count SQL(单机规模可接受, I5 可合并)
+**commit**: (本次提交)
+---
+
 ## [I2] 2026-11-09 ｜ 数据可视化(热力图 + 热度榜 + 数据卡片 + 笔记导出)
 
 **做了什么**

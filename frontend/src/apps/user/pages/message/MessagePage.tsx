@@ -25,8 +25,10 @@ import {
   markAllMessagesRead,
   markMessageRead,
 } from '@/domain/note/api';
-import type { MessageVO, UnreadCount } from '@/domain/note/types';
+import type { MessageVO } from '@/domain/note/types';
 import { handleAuthError } from '@/request/http';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setUnread } from '@/store/notificationSlice';
 
 const PAGE_SIZE = 10;
 
@@ -41,11 +43,12 @@ const TYPE_TABS = [
 export default function MessagePage() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const unread = useAppSelector((s) => s.notification.unread);
   const [tab, setTab] = useState('all');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<MessageVO[]>([]);
   const [total, setTotal] = useState(0);
-  const [unread, setUnread] = useState<UnreadCount | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -58,13 +61,13 @@ export default function MessagePage() {
       ]);
       setItems(data.list);
       setTotal(data.total);
-      setUnread(count);
+      dispatch(setUnread(count));
     } catch (e) {
       if (!handleAuthError(e)) message.error('消息加载失败');
     } finally {
       setLoading(false);
     }
-  }, [tab, page, message]);
+  }, [tab, page, message, dispatch]);
 
   useEffect(() => {
     load();
@@ -73,7 +76,11 @@ export default function MessagePage() {
   const openMessage = async (item: MessageVO) => {
     // 导航前的已读处理不阻塞跳转
     if (item.isRead === 0) {
-      markMessageRead(item.messageId).catch(() => undefined);
+      // WebSocket 会推送新计数; HTTP 补拉兜底(断线场景)
+      markMessageRead(item.messageId)
+        .then(() => getUnreadCount())
+        .then((counts) => dispatch(setUnread(counts)))
+        .catch(() => undefined);
       setItems((prev) =>
         prev.map((m) => (m.messageId === item.messageId ? { ...m, isRead: 1 } : m)),
       );
@@ -109,17 +116,17 @@ export default function MessagePage() {
   };
 
   const unreadBadge: Record<string, number> = {
-    all: unread?.total ?? 0,
-    '1': unread?.like ?? 0,
-    '2': unread?.comment ?? 0,
-    '3': unread?.system ?? 0,
+    all: unread.total,
+    '1': unread.like,
+    '2': unread.comment,
+    '3': unread.system,
   };
 
   return (
     <Card
       title="消息中心"
       extra={
-        <Button onClick={handleReadAll} disabled={(unread?.total ?? 0) === 0}>
+        <Button onClick={handleReadAll} disabled={unread.total === 0}>
           全部已读
         </Button>
       }

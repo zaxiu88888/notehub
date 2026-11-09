@@ -13,7 +13,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // 后端同源代理: 前端只写 /api、/images, 开发期无需 CORS
+    // 后端同源代理: 前端只写 /api、/images、/ws, 开发期无需 CORS
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
@@ -22,6 +22,11 @@ export default defineConfig({
       '/images': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

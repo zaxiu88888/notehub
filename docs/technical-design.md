@@ -43,6 +43,7 @@
 | 持久层 | MyBatis (mybatis-spring-boot-starter) | 3.0.x | XML SQL 可控、对齐原项目便于对照；不引入 MyBatis-Plus（减少魔法，面试讲得清） |
 | 数据库 | MySQL | 8.0.41（已装） | — |
 | 缓存 | spring-boot-starter-data-redis (Lettuce) | 随 BOM | 默认 Lettuce 优于 Jedis（原项目用 Jedis） |
+| 实时 | spring-boot-starter-websocket + @stomp/stompjs | 随 BOM / 7.x | I3 未读推送；原生 WebSocket + STOMP，不引 SockJS |
 | 邮件 | spring-boot-starter-mail + QQ SMTP | 随 BOM | 真发验证码 |
 | 定时 | spring @Scheduled | 随 BOM | 单机规模够用，不引 quartz |
 | 日志 | Log4j2（排除 logback） | 随 BOM | 异步日志、对齐原项目 |
@@ -159,7 +160,7 @@ POST /api/users {email, code, account, password}
 点赞: POST /api/like/note/{id} → INSERT note_likes(uk 防重) → 原子 UPDATE notes.like_count+1
      → 若非自赞 → publish MessageEvent(LIKE) → @EventListener 异步 INSERT messages
 评论: 同模式，父评论存在才允许回复；回复数维护 reply_count
-未读数: GET /api/messages/unread/count（前端 30s 轮询；I3 换 WebSocket 真推送）
+未读数: GET /api/messages/unread/count（I3 起由 WebSocket 推送；HTTP 用于连接/重连补齐与消息页加载）
 ```
 
 ### 5.4 题目批量导入（行级模板解析）
@@ -243,6 +244,23 @@ frontend/src/
 
 > 索引: `notes(author_id, created_at)` 与互动表 `created_at`，见 `db/migration/I2_analytics.sql`。
 
+## 5.8 实时未读推送（I3）
+
+```
+连接: ws://host/ws (STOMP 1.2, 无 SockJS)
+鉴权: CONNECT 头 Authorization: Bearer <jwt>
+      StompAuthChannelInterceptor: 校验 JWT → accessor.setUser(userId)
+      仅允许 SUBSCRIBE /user/queue/**; 拒绝客户端 SEND
+订阅: /user/queue/unread
+推送: SimpMessagingTemplate.convertAndSendToUser(userId, "/queue/unread", counts)
+      载荷 {total, like, comment, system}, 与 HTTP 未读接口同构
+触发: 新消息落库(InteractionEventListener) / 已读 / 删除(MessageController)
+前端: @stomp/stompjs, 5s 自动重连; connect/重连成功后 HTTP 补拉一次
+      Redux notificationSlice 统一维护角标(布局/消息页共用)
+```
+
+> 只推送计数不推送消息体：消息页仍按需分页拉取，推送链路轻且不会把私密内容广播到错误会话。
+
 ## 8. 安全设计清单
 - 密码 BCrypt（强度默认 10）；JWT HS256 + 30 天过期 + local.yaml 密钥
 - 所有 admin 接口 `@NeedAdmin`；资源写操作校验归属（owner/40301）
@@ -251,3 +269,4 @@ frontend/src/
 - SQL 全参数化（MyBatis #{}），无拼接
 - 上传：仅图片后缀白名单 + 大小限制 5MB，文件名 UUID 重写，存本地 uploads/ 经 /images/** 访问
 - CORS 白名单 `http://localhost:5173`
+- WebSocket：CONNECT 帧校验 JWT；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`

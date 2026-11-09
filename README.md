@@ -133,7 +133,7 @@ notehub/
 - [x] MVP：用户/题库/笔记/互动/消息/管理端/统计
 - [x] I1 搜索：MySQL FULLTEXT(ngram) + Jieba 分词 + Redis 缓存
 - [x] I2 数据可视化：GitHub 风格热力图（Redis 位图）、笔记热度榜、个人数据卡片、Markdown 导出
-- [ ] I3 实时化：WebSocket 推送未读消息（替代轮询）
+- [x] I3 实时化：WebSocket(STOMP) 推送未读消息（替代 30s 轮询，JWT 握手鉴权）
 - [ ] I4 标签体系：题目/笔记标签与多维索引
 - [ ] I5 深化：缓存分层、限流反垃圾、计数去重统计表
 - [ ] I6 拓展：AI 题解总结、打卡 streak

@@ -6,6 +6,7 @@ import { App as AntApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from '@/store/userSlice';
+import notificationReducer from '@/store/notificationSlice';
 import MessagePage from './MessagePage';
 
 vi.mock('@/domain/note/api', () => ({
@@ -19,7 +20,9 @@ vi.mock('@/domain/note/api', () => ({
 import { getMessages, getUnreadCount } from '@/domain/note/api';
 
 function renderPage() {
-  const store = configureStore({ reducer: { user: userReducer } });
+  const store = configureStore({
+    reducer: { user: userReducer, notification: notificationReducer },
+  });
   return render(
     <Provider store={store}>
       <MemoryRouter>

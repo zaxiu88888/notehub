@@ -4,21 +4,23 @@ import { MessageOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { UNAUTHORIZED_EVENT } from '@/request/http';
 import { getUnreadCount } from '@/domain/note/api';
+import { connectUnreadSocket } from '@/domain/notification/socket';
 import { fetchWhoamiThunk, logout } from '@/store/userSlice';
+import { resetNotification, setConnected, setUnread } from '@/store/notificationSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import LoginModal from '@/domain/user/components/LoginModal';
 
 const { Header, Content, Footer } = Layout;
 
-/** 用户端整体布局: 顶部导航(消息角标 30s 轮询) + 内容区 + 页脚 */
+/** 用户端整体布局: 顶部导航(WebSocket 实时未读角标) + 内容区 + 页脚 */
 export default function UserLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const { message } = App.useApp();
   const { token, user } = useAppSelector((s) => s.user);
+  const unread = useAppSelector((s) => s.notification.unread.total);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [unread, setUnread] = useState(0);
   const [searchValue, setSearchValue] = useState("");
 
   // 有 token 时恢复登录态
@@ -28,27 +30,39 @@ export default function UserLayout() {
     }
   }, [token, user, dispatch]);
 
-  // 未读消息轮询(30s): 登录后开启, 退出即停; I3 迭代会换成 WebSocket 推送
+  // I3 实时未读: WebSocket 推送 + 连接/重连时 HTTP 补拉一次(断线期间消息)
   useEffect(() => {
     if (!token) {
-      setUnread(0);
+      dispatch(resetNotification());
       return;
     }
     let cancelled = false;
-    const pull = () => {
+    const refresh = () => {
       getUnreadCount()
-        .then((c) => {
-          if (!cancelled) setUnread(c.total);
+        .then((counts) => {
+          if (!cancelled) dispatch(setUnread(counts));
         })
         .catch(() => undefined);
     };
-    pull();
-    const timer = setInterval(pull, 30_000);
+    refresh();
+    const socket = connectUnreadSocket({
+      token,
+      onUnread: (counts) => dispatch(setUnread(counts)),
+      onConnected: () => {
+        if (cancelled) return;
+        dispatch(setConnected(true));
+        refresh();
+      },
+      onDisconnected: () => {
+        if (!cancelled) dispatch(setConnected(false));
+      },
+    });
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      socket.disconnect();
+      dispatch(setConnected(false));
     };
-  }, [token]);
+  }, [token, dispatch]);
 
   // 全局会话失效: 弹登录框
   useEffect(() => {

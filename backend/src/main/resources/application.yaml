@@ -33,3 +33,8 @@ server:
 upload:
   path: ./uploads          # 上传目录(相对 backend 运行目录)
   url-prefix: /images      # 访问前缀(静态映射见 WebConfig)
+
+app:
+  ws:
+    # STOMP 握手允许的来源(逗号分隔); 生产环境改成实际域名
+    allowed-origins: http://localhost:5173
