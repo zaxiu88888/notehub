@@ -10,6 +10,8 @@ export interface UserVO {
   school: string | null;
   signature: string | null;
   isAdmin: number;
+  /** 0正常 1封禁 */
+  isBanned: number;
   lastLoginAt: string | null;
   createdAt: string;
 }

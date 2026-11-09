@@ -32,6 +32,9 @@ public class UserVO {
 
     private Integer isAdmin;
 
+    /** 0正常 1封禁(管理端展示用) */
+    private Integer isBanned;
+
     private LocalDateTime lastLoginAt;
 
     private LocalDateTime createdAt;

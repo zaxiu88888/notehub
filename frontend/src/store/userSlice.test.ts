@@ -19,6 +19,7 @@ const demoUser: UserVO = {
   school: null,
   signature: null,
   isAdmin: 0,
+  isBanned: 0,
   lastLoginAt: null,
   createdAt: '2026-11-01T00:00:00',
 };
