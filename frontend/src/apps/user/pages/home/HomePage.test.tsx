@@ -17,10 +17,11 @@ vi.mock('@/domain/question/api', () => ({
 }));
 vi.mock('@/domain/note/api', () => ({
   getNotes: vi.fn(),
+  getNoteRanklist: vi.fn(),
 }));
 
 import { getCategoryTree, getQuestions } from '@/domain/question/api';
-import { getNotes } from '@/domain/note/api';
+import { getNoteRanklist, getNotes } from '@/domain/note/api';
 
 const question: QuestionVO = {
   questionId: 2,
@@ -77,6 +78,7 @@ describe('HomePage', () => {
     ]);
     vi.mocked(getQuestions).mockResolvedValue({ list: [question], page: 1, pageSize: 10, total: 1 });
     vi.mocked(getNotes).mockResolvedValue({ list: [note], page: 1, pageSize: 8, total: 1 });
+    vi.mocked(getNoteRanklist).mockResolvedValue([]);
   });
 
   it('渲染题目列表与最新笔记', async () => {

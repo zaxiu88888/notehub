@@ -3,6 +3,7 @@ package com.notehub.service;
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
 import com.notehub.common.PageVO;
+import com.notehub.event.NoteHeatmapEvent;
 import com.notehub.mapper.CollectionNoteMapper;
 import com.notehub.mapper.CommentMapper;
 import com.notehub.mapper.NoteMapper;
@@ -15,7 +16,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,14 +41,16 @@ class NoteServiceImplTest {
 
     private NoteMapper noteMapper;
     private QuestionMapper questionMapper;
+    private ApplicationEventPublisher eventPublisher;
     private NoteServiceImpl noteService;
 
     @BeforeEach
     void setUp() {
         noteMapper = mock(NoteMapper.class);
         questionMapper = mock(QuestionMapper.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         noteService = new NoteServiceImpl(noteMapper, mock(CommentMapper.class),
-                mock(CollectionNoteMapper.class), questionMapper);
+                mock(CollectionNoteMapper.class), questionMapper, eventPublisher);
     }
 
     private Note note(long id, long authorId) {
@@ -54,6 +59,7 @@ class NoteServiceImplTest {
         n.setAuthorId(authorId);
         n.setQuestionId(2L);
         n.setContent("# 两数之和题解\n哈希表一次遍历。");
+        n.setCreatedAt(java.time.LocalDateTime.now());
         n.setLikeCount(3);
         n.setCommentCount(1);
         n.setCollectCount(2);
@@ -109,6 +115,13 @@ class NoteServiceImplTest {
 
         Long noteId = noteService.createNote(7L, 2L, "内容");
         assertEquals(100L, noteId);
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        NoteHeatmapEvent heatmapEvent = (NoteHeatmapEvent) eventCaptor.getValue();
+        assertEquals(7L, heatmapEvent.authorId());
+        assertEquals(LocalDate.now(), heatmapEvent.day());
+        assertEquals(1, heatmapEvent.delta());
 
         when(noteMapper.selectByAuthorAndQuestion(7L, 2L)).thenReturn(note(10L, 7L));
         BusinessException e = assertThrows(BusinessException.class,

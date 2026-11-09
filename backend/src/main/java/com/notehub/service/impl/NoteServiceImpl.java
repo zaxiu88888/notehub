@@ -4,6 +4,7 @@ import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
 import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
+import com.notehub.event.NoteHeatmapEvent;
 import com.notehub.mapper.CollectionNoteMapper;
 import com.notehub.mapper.CommentMapper;
 import com.notehub.mapper.NoteMapper;
@@ -14,9 +15,11 @@ import com.notehub.model.entity.Question;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.service.NoteService;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +39,16 @@ public class NoteServiceImpl implements NoteService {
     private final CommentMapper commentMapper;
     private final CollectionNoteMapper collectionNoteMapper;
     private final QuestionMapper questionMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public NoteServiceImpl(NoteMapper noteMapper, CommentMapper commentMapper,
-                           CollectionNoteMapper collectionNoteMapper, QuestionMapper questionMapper) {
+                           CollectionNoteMapper collectionNoteMapper, QuestionMapper questionMapper,
+                           ApplicationEventPublisher eventPublisher) {
         this.noteMapper = noteMapper;
         this.commentMapper = commentMapper;
         this.collectionNoteMapper = collectionNoteMapper;
         this.questionMapper = questionMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -78,6 +84,8 @@ public class NoteServiceImpl implements NoteService {
         note.setContent(content);
         note.setSearchVector(buildSearchVector(question.getTitle(), content));
         noteMapper.insert(note);
+        // 热力图增量(位图已建立时生效, 否则等下次读取时回填)
+        eventPublisher.publishEvent(new NoteHeatmapEvent(this, authorId, LocalDate.now(), 1));
         log.info("[笔记] 发布: noteId={}, author={}, question={}", note.getNoteId(), authorId, questionId);
         return note.getNoteId();
     }
@@ -103,6 +111,9 @@ public class NoteServiceImpl implements NoteService {
         commentMapper.softDeleteByNoteId(noteId);
         collectionNoteMapper.deleteByNoteId(noteId);
         noteMapper.deleteById(noteId);
+        LocalDate publishedDay = note.getCreatedAt() == null
+                ? LocalDate.now() : note.getCreatedAt().toLocalDate();
+        eventPublisher.publishEvent(new NoteHeatmapEvent(this, note.getAuthorId(), publishedDay, -1));
         log.info("[笔记] 删除(连带清理): noteId={}, author={}", noteId, operatorId);
     }
 

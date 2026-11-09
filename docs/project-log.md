@@ -14,6 +14,22 @@
 
 ---
 
+## [I2] 2026-11-09 ｜ 数据可视化(热力图 + 热度榜 + 数据卡片 + 笔记导出)
+
+**做了什么**
+- 后端 4 接口: `GET /notes/heatmap`(Redis 位图, 每天 u8, 事务提交后事件增量维护, 读未命中从库回填, Redis 故障降级) / `GET /notes/ranklist`(week/month/all, hotScore=赞*2+评*3+藏*2, 缓存 5min) / `GET /notes/top3count`(笔记/赞评藏/字数/活跃天数/连续提交) / `GET /notes/download`(Markdown 附件, 全部或单篇)
+- 新增 NoteAnalyticsService + Mapper 聚合; 事件 NoteHeatmapEvent + NoteHeatmapListener; MarkdownUtils/StreakUtils
+- DB 迁移 `db/migration/I2_analytics.sql`: notes(author_id,created_at)、note_likes/comments/collection_notes(created_at) 索引; schema.sql 同步
+- 前端: 个人中心「数据统计」页签(3 大卡片 + 明细 + 全年热力图 + 年份切换); 首页「笔记热度榜」卡片(近7天/近30天/总榜); 我的笔记「导出全部」+ 笔记卡片单篇导出; 热力图纯 CSS 网格, 不引图表库
+- 文档: api-contract 新增 §14、technical-design §5.7、README 路线图勾选
+
+**测试门**: 后端 144/144; 前端 29/29; 构建通过
+**冒烟门(真实环境)**: 登录 demo → top3(2 篇/1 赞/1 连击) / heatmap 365 天且今日 2 篇 / 创建临时笔记热力图 2→3 / 删除还原 3→2 / ranklist 本周 2 条且 hotScore 正确 / 非法周期 40001 / 全部导出含附件头与正文 / 单篇导出 / 不存在笔记 40401 / 清理后笔记数还原; 浏览器: 首页热度榜渲染、数据统计卡片与热力图 2026-11-09=2篇、导出全部触发 download 事件
+**自审门**: 修复 4 处自身问题 — ① BITFIELD offset 是 bit 而非字节, 增量写错位置(冒烟发现并修, 含测试断言); ② 窗口榜单收藏数按人头 DISTINCT, 防一人多夹刷热度; ③ 删除笔记事件改用 note.authorId 而非操作者; ④ 前端 revokeObjectURL 延迟, 防部分浏览器中断下载
+**commit**: (本次提交)
+**遗留已知**: 热力图位图 TTL 1h 内依赖事件维护(极端并发回填窗口可能短暂少计, 1h 后自愈); 导出未做体量上限
+---
+
 ## [I1] 2026-11-09 ｜ 搜索能力（FULLTEXT ngram + Jieba + Redis 缓存）
 
 **做了什么**

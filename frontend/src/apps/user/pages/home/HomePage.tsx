@@ -21,6 +21,7 @@ import { getCategoryTree, getQuestions } from '@/domain/question/api';
 import type { CategoryVO, QuestionVO } from '@/domain/question/types';
 import { getNotes } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
+import RankListCard from '@/domain/note/components/RankListCard';
 import { ApiError } from '@/request/http';
 import dayjs from 'dayjs';
 
@@ -176,52 +177,55 @@ export default function HomePage() {
       </Col>
 
       <Col xs={24} lg={9}>
-        <Card title="最新笔记" styles={{ body: { paddingTop: 8 } }}>
-          <List
-            dataSource={notes}
-            locale={{ emptyText: <Empty description="还没有人写笔记, 来做第一个吧" /> }}
-            renderItem={(note) => (
-              <List.Item>
-                <List.Item.Meta
-                  title={
-                    <Space size={6}>
-                      <span>{note.author.username}</span>
-                      <Typography.Text type="secondary" style={{ fontWeight: 'normal' }}>
-                        写于《{note.question.title}》
-                      </Typography.Text>
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                      <Typography.Paragraph
-                        ellipsis={{ rows: 2 }}
-                        style={{ marginBottom: 0, color: 'rgba(0,0,0,.65)' }}
-                      >
-                        {note.content}
-                      </Typography.Paragraph>
-                      <Space size={12} style={{ color: '#8c8c8c', fontSize: 12 }}>
-                        <span>
-                          <LikeOutlined /> {note.likeCount}
-                        </span>
-                        <span>
-                          <CommentOutlined /> {note.commentCount}
-                        </span>
-                        <span>{dayjs(note.createdAt).format('MM-DD HH:mm')}</span>
+        <Space direction="vertical" size={24} style={{ width: '100%' }}>
+          <Card title="最新笔记" styles={{ body: { paddingTop: 8 } }}>
+            <List
+              dataSource={notes}
+              locale={{ emptyText: <Empty description="还没有人写笔记, 来做第一个吧" /> }}
+              renderItem={(note) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={
+                      <Space size={6}>
+                        <span>{note.author.username}</span>
+                        <Typography.Text type="secondary" style={{ fontWeight: 'normal' }}>
+                          写于《{note.question.title}》
+                        </Typography.Text>
                       </Space>
-                    </Space>
-                  }
-                />
-              </List.Item>
+                    }
+                    description={
+                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                        <Typography.Paragraph
+                          ellipsis={{ rows: 2 }}
+                          style={{ marginBottom: 0, color: 'rgba(0,0,0,.65)' }}
+                        >
+                          {note.content}
+                        </Typography.Paragraph>
+                        <Space size={12} style={{ color: '#8c8c8c', fontSize: 12 }}>
+                          <span>
+                            <LikeOutlined /> {note.likeCount}
+                          </span>
+                          <span>
+                            <CommentOutlined /> {note.commentCount}
+                          </span>
+                          <span>{dayjs(note.createdAt).format('MM-DD HH:mm')}</span>
+                        </Space>
+                      </Space>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+            {notes.length > 0 && (
+              <Link to="/question-lists">
+                <Button type="link" block>
+                  浏览题单 →
+                </Button>
+              </Link>
             )}
-          />
-          {notes.length > 0 && (
-            <Link to="/question-lists">
-              <Button type="link" block>
-                浏览题单 →
-              </Button>
-            </Link>
-          )}
-        </Card>
+          </Card>
+          <RankListCard />
+        </Space>
       </Col>
     </Row>
   );

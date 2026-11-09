@@ -151,4 +151,91 @@
         SELECT COUNT(*) FROM notes
         WHERE MATCH(search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
     </select>
+
+    <!-- ==================== I2 数据可视化 ==================== -->
+
+    <!-- 热力图回填: 某用户一年内按天计数 -->
+    <select id="countDailyByAuthor" resultType="com.notehub.model.dto.note.DailyCountRow">
+        SELECT DATE(created_at) AS day, COUNT(*) AS day_count
+        FROM notes
+        WHERE author_id = #{authorId}
+          AND created_at &gt;= #{start}
+          AND created_at &lt; DATE_ADD(#{end}, INTERVAL 1 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY day
+    </select>
+
+    <!-- 热度榜(累计): 直接用 notes 上的计数列, 与页面展示口径一致 -->
+    <select id="selectRanklistAll" resultType="com.notehub.model.entity.Note">
+        SELECT <include refid="listColumns"/>
+        FROM notes n
+        JOIN users u ON n.author_id = u.user_id
+        JOIN questions q ON n.question_id = q.question_id
+        ORDER BY (n.like_count * 2 + n.comment_count * 3 + n.collect_count * 2) DESC,
+                 n.created_at DESC, n.note_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 热度榜(窗口): 只聚合 since 之后的互动, 三个 LEFT JOIN 各一条聚合查询 -->
+    <select id="selectRanklistSince" resultType="com.notehub.model.entity.Note">
+        SELECT n.note_id, n.author_id, n.question_id, n.content, n.created_at, n.updated_at,
+               u.username AS author_name, u.avatar_url AS author_avatar_url,
+               q.title AS question_title, q.difficulty AS question_difficulty,
+               COALESCE(l.cnt, 0) AS like_count,
+               COALESCE(c.cnt, 0) AS comment_count,
+               COALESCE(col.cnt, 0) AS collect_count
+        FROM notes n
+        JOIN users u ON n.author_id = u.user_id
+        JOIN questions q ON n.question_id = q.question_id
+        LEFT JOIN (
+            SELECT note_id, COUNT(*) AS cnt FROM note_likes
+            WHERE created_at &gt;= #{since} GROUP BY note_id
+        ) l ON l.note_id = n.note_id
+        LEFT JOIN (
+            SELECT note_id, COUNT(*) AS cnt FROM comments
+            WHERE created_at &gt;= #{since} AND is_deleted = 0 GROUP BY note_id
+        ) c ON c.note_id = n.note_id
+        LEFT JOIN (
+            SELECT cn.note_id, COUNT(DISTINCT c.creator_id) AS cnt
+            FROM collection_notes cn
+            JOIN collections c ON cn.collection_id = c.collection_id
+            WHERE cn.created_at &gt;= #{since}
+            GROUP BY cn.note_id
+        ) col ON col.note_id = n.note_id
+        ORDER BY (COALESCE(l.cnt, 0) * 2 + COALESCE(c.cnt, 0) * 3 + COALESCE(col.cnt, 0) * 2) DESC,
+                 n.created_at DESC, n.note_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 个人累计指标: 计数列本身就是"收到的赞/评/藏", 避免再扫互动表 -->
+    <select id="selectNoteTotals" resultType="com.notehub.model.dto.note.NoteTotalsRow">
+        SELECT COUNT(*)                                   AS note_count,
+               COALESCE(SUM(like_count), 0)               AS like_count,
+               COALESCE(SUM(comment_count), 0)            AS comment_count,
+               COALESCE(SUM(collect_count), 0)            AS collect_count,
+               COALESCE(SUM(CHAR_LENGTH(content)), 0)     AS word_count
+        FROM notes
+        WHERE author_id = #{authorId}
+    </select>
+
+    <select id="selectActiveDates" resultType="java.time.LocalDate">
+        SELECT DISTINCT DATE(created_at)
+        FROM notes
+        WHERE author_id = #{authorId}
+        ORDER BY DATE(created_at) DESC
+    </select>
+
+    <select id="countNotesSince" resultType="long">
+        SELECT COUNT(*) FROM notes
+        WHERE author_id = #{authorId} AND created_at &gt;= #{since}
+    </select>
+
+    <select id="selectAllByAuthor" resultType="com.notehub.model.entity.Note">
+        SELECT <include refid="listColumns"/>
+        FROM notes n
+        JOIN users u ON n.author_id = u.user_id
+        JOIN questions q ON n.question_id = q.question_id
+        WHERE n.author_id = #{authorId}
+        ORDER BY n.created_at ASC, n.note_id ASC
+    </select>
 </mapper>

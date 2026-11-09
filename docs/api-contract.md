@@ -167,7 +167,19 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 - 空/纯符号关键词 → 空列表；关键词长度截断 64 字符；结果缓存 5 分钟（按关键词哈希+分页，仅缓存 ID 与总数）
 - 前端入口：顶栏搜索框 → `/search?keyword=`
 
+## 14. 数据可视化 /api/notes（I2 已实现）
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `/notes/heatmap?year=` | 🔒 | 我的刷题热力图；默认今年，返回全年逐日 `{date,count}` 及 `total/activeDays/max` |
+| GET | `/notes/ranklist?period=&limit=` | 🌐 | 笔记热度榜；`period=week`(近7天)/`month`(近30天)/`all`(总榜)，`limit` 1..50 默认 10 |
+| GET | `/notes/top3count` | 🔒 | 个人数据卡片：笔记数/收获赞评藏/累计字数/活跃天数/当前与最长连续提交/本月新增 |
+| GET | `/notes/download?noteId=` | 🔒 | Markdown 附件下载；不带 `noteId` 导出全部，带 `noteId` 导出单篇（仅作者） |
+
+- 热力图按笔记创建日计数；Redis 位图 `heatmap:{userId}:{year}`（每天 1 字节）缓存 1 小时，笔记增删事件增量维护，Redis 不可用自动降级查库
+- 热度榜 `hotScore = 赞*2 + 评论*3 + 收藏*2`；窗口榜单按互动记录时间过滤，结果缓存 5 分钟（公共数据）
+- 导出响应 `Content-Type: text/markdown;charset=UTF-8`，`Content-Disposition: attachment`
+
 ## 附：MVP 后迭代接口预留（不在本期实现）
-- I2 数据：`GET /notes/ranklist` `GET /notes/heatmap` `GET /notes/top3count` `GET /notes/download`
 - I3 WebSocket：`/ws` STOMP 端点（未读推送，替代轮询）
 - I4 标签：`GET /tags` `GET /questions?tag=`

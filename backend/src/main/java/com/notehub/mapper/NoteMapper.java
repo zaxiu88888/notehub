@@ -1,10 +1,14 @@
 package com.notehub.mapper;
 
+import com.notehub.model.dto.note.DailyCountRow;
 import com.notehub.model.dto.note.NoteQueryParams;
+import com.notehub.model.dto.note.NoteTotalsRow;
 import com.notehub.model.entity.Note;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -65,4 +69,29 @@ public interface NoteMapper {
                                @Param("offset") int offset, @Param("limit") int limit);
 
     long countByKeyword(@Param("keyword") String keyword);
+
+    // ---- I2 数据可视化 ----
+
+    /** 某用户一年内按天聚合的笔记数(热力图缓存回填) */
+    List<DailyCountRow> countDailyByAuthor(@Param("authorId") Long authorId,
+                                           @Param("start") LocalDate start,
+                                           @Param("end") LocalDate end);
+
+    /** 热度榜(累计): 直接使用 notes 上的计数列 */
+    List<Note> selectRanklistAll(@Param("limit") int limit);
+
+    /** 热度榜(窗口): 只统计 since 之后的赞/评/藏 */
+    List<Note> selectRanklistSince(@Param("since") LocalDateTime since, @Param("limit") int limit);
+
+    /** 个人累计指标一条 SQL 拿齐 */
+    NoteTotalsRow selectNoteTotals(@Param("authorId") Long authorId);
+
+    /** 有笔记产出的日期(倒序, 连续提交计算用) */
+    List<LocalDate> selectActiveDates(@Param("authorId") Long authorId);
+
+    /** 某时间之后新增的笔记数(本月/本周卡片) */
+    long countNotesSince(@Param("authorId") Long authorId, @Param("since") LocalDateTime since);
+
+    /** 导出全部笔记(按时间正序) */
+    List<Note> selectAllByAuthor(@Param("authorId") Long authorId);
 }

@@ -3,6 +3,7 @@ import { App, Avatar, Button, Card, Popconfirm, Space, Tag, Tooltip, Typography 
 import {
   CommentOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   LikeFilled,
   LikeOutlined,
@@ -12,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { NoteVO } from '@/domain/note/types';
-import { deleteNote, likeNote, unlikeNote } from '@/domain/note/api';
+import { deleteNote, downloadNotes, likeNote, unlikeNote } from '@/domain/note/api';
 import { handleAuthError } from '@/request/http';
 import { requireLogin } from '@/utils/auth';
 import { useAppSelector } from '@/store/hooks';
@@ -75,6 +76,14 @@ export default function NoteCard({
     }
   };
 
+  const handleExport = async () => {
+    try {
+      await downloadNotes(note.noteId);
+    } catch (e) {
+      if (!handleAuthError(e)) message.error(e instanceof Error ? e.message : '导出失败');
+    }
+  };
+
   return (
     <Card
       style={{ marginBottom: 16 }}
@@ -92,6 +101,14 @@ export default function NoteCard({
       extra={
         mine ? (
           <Space>
+            <Tooltip title="导出 Markdown">
+              <Button
+                type="text"
+                size="small"
+                icon={<DownloadOutlined />}
+                onClick={handleExport}
+              />
+            </Tooltip>
             <Tooltip title="编辑">
               <Button
                 type="text"

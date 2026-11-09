@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { App, Card, Empty, Pagination, Skeleton } from 'antd';
+import { App, Button, Card, Empty, Pagination, Skeleton, Typography } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import { getNotes } from '@/domain/note/api';
+import { downloadNotes, getNotes } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
 import NoteCard from '@/domain/note/components/NoteCard';
 import { useAppSelector } from '@/store/hooks';
@@ -16,6 +17,7 @@ export default function MyNotesPanel() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -35,6 +37,18 @@ export default function MyNotesPanel() {
     load();
   }, [load]);
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await downloadNotes();
+      message.success('已开始下载全部笔记');
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '导出失败');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading && notes.length === 0) return <Skeleton active paragraph={{ rows: 6 }} />;
 
   if (notes.length === 0) {
@@ -49,6 +63,19 @@ export default function MyNotesPanel() {
 
   return (
     <>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <Typography.Text type="secondary">共 {total} 篇笔记</Typography.Text>
+        <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+          导出全部 (Markdown)
+        </Button>
+      </div>
       {notes.map((note) => (
         <NoteCard key={note.noteId} note={note} collapsible onChanged={load} />
       ))}

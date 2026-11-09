@@ -70,3 +70,46 @@ export interface UnreadCount {
   comment: number;
   system: number;
 }
+
+// ---------- I2 数据可视化 ----------
+
+export interface HeatmapDay {
+  date: string;
+  count: number;
+}
+
+export interface HeatmapVO {
+  year: number;
+  total: number;
+  activeDays: number;
+  max: number;
+  days: HeatmapDay[];
+}
+
+export type RankPeriod = 'week' | 'month' | 'all';
+
+export interface RankNoteVO {
+  rank: number;
+  noteId: number;
+  questionId: number;
+  questionTitle: string;
+  difficulty: number;
+  author: NoteAuthor;
+  excerpt: string;
+  likeCount: number;
+  commentCount: number;
+  collectCount: number;
+  hotScore: number;
+}
+
+export interface NoteStatsVO {
+  noteCount: number;
+  likeCount: number;
+  commentCount: number;
+  collectCount: number;
+  wordCount: number;
+  activeDays: number;
+  currentStreak: number;
+  longestStreak: number;
+  monthNoteCount: number;
+}

@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS notes (
     KEY idx_author (author_id),
     KEY idx_question (question_id),
     KEY idx_created (created_at),
+    KEY idx_author_created (author_id, created_at),
     FULLTEXT KEY ft_notes_search (search_vector) WITH PARSER ngram
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='笔记';
 
@@ -99,7 +100,8 @@ CREATE TABLE IF NOT EXISTS note_likes (
     user_id    BIGINT UNSIGNED NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_note_user (note_id, user_id) COMMENT '防重复点赞'
+    UNIQUE KEY uk_note_user (note_id, user_id) COMMENT '防重复点赞',
+    KEY idx_created (created_at) COMMENT '热度榜窗口聚合'
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='笔记点赞';
 
 -- 8. 笔记收藏(扁平收藏记录, 配合收藏夹)
@@ -131,7 +133,8 @@ CREATE TABLE IF NOT EXISTS collection_notes (
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_collection_note (collection_id, note_id),
-    KEY idx_collection (collection_id)
+    KEY idx_collection (collection_id),
+    KEY idx_created (created_at) COMMENT '热度榜窗口聚合'
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='收藏夹条目';
 
 -- 11. 评论(两级: parent_id 为空=顶层评论)
@@ -149,7 +152,8 @@ CREATE TABLE IF NOT EXISTS comments (
     updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_note (note_id),
     KEY idx_parent (parent_id),
-    KEY idx_author (author_id)
+    KEY idx_author (author_id),
+    KEY idx_created (created_at) COMMENT '热度榜窗口聚合'
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='评论';
 
 -- 12. 评论点赞

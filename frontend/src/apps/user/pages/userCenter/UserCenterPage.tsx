@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import ProfilePanel from './panels/ProfilePanel';
 import MyNotesPanel from './panels/MyNotesPanel';
 import CollectionsPanel from './panels/CollectionsPanel';
+import DataPanel from './panels/DataPanel';
 import { useAppSelector } from '@/store/hooks';
 import { UNAUTHORIZED_EVENT } from '@/request/http';
 
-/** 个人中心: 资料 / 我的笔记 / 我的收藏 */
+/** 个人中心: 资料 / 我的笔记 / 我的收藏 / 数据统计 */
 export default function UserCenterPage() {
   const navigate = useNavigate();
   const { token } = useAppSelector((s) => s.user);
@@ -30,6 +31,7 @@ export default function UserCenterPage() {
           { key: 'profile', label: '个人资料', children: <ProfilePanel /> },
           { key: 'notes', label: '我的笔记', children: <MyNotesPanel /> },
           { key: 'collections', label: '我的收藏', children: <CollectionsPanel /> },
+          { key: 'data', label: '数据统计', children: <DataPanel /> },
         ]}
       />
     </Card>

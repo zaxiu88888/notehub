@@ -56,7 +56,7 @@
 | 路由 | react-router-dom | 6.x | — |
 | HTTP | axios | 1.7+ | 比原项目自研 FetchClient 更主流 |
 | 编辑器 | cherry-markdown | 0.8.x | 原项目同款，Markdown 编辑体验好 |
-| 图表 | echarts (迭代期) | 5.x | 热力图/统计看板 |
+| 图表 | echarts (预留) | 5.x | I2 热力图/看板改用 CSS 网格与表格实现，暂不引图表库；复杂图表再启用 |
 | 测试 | JUnit5 + Spring Boot Test / Vitest | — | 测试门要求 |
 
 ## 3. 后端包结构（com.notehub）
@@ -227,6 +227,21 @@ frontend/src/
 
 > 说明: ngram 负责中文 bigram 索引, Jieba 负责查询侧分词与噪声清理, 两者互补;
 > 写入路径已维护向量, 历史数据由 `db/migration/I1_search.sql` 回填。
+
+## 5.7 数据可视化设计（I2）
+
+```
+热力图: Redis BITFIELD "heatmap:{userId}:{year}", 每天 u8(1 字节), 最多 255
+        读: GET 位图 → 逐日解包; 未命中 → notes 按天聚合回填, TTL 1h(库为准, 自愈)
+        写: 笔记发布/删除 → 事务提交后事件 → BITFIELD OVERFLOW SAT INCRBY ±1
+        Redis 不可用: 降级直接查库, 不影响笔记主流程
+热度榜: 窗口(7d/30d)内 note_likes/comments/collection_notes 聚合 → hotScore=赞*2+评*3+藏*2
+        all 直接读 notes 计数列; 榜单与用户无关, Redis 缓存 5min
+数据卡片: notes 计数列一条聚合 + DISTINCT 日期计算当前/最长连续提交
+导出: 全部/单篇 → Markdown 附件(仅作者), 不走统一 JSON 响应
+```
+
+> 索引: `notes(author_id, created_at)` 与互动表 `created_at`，见 `db/migration/I2_analytics.sql`。
 
 ## 8. 安全设计清单
 - 密码 BCrypt（强度默认 10）；JWT HS256 + 30 天过期 + local.yaml 密钥
