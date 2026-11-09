@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.CollectionNoteMapper">
+
+    <insert id="insert">
+        INSERT IGNORE INTO collection_notes (collection_id, note_id)
+        VALUES (#{collectionId}, #{noteId})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM collection_notes
+        WHERE collection_id = #{collectionId} AND note_id = #{noteId}
+    </delete>
+
+    <select id="selectNoteIdsByCollection" resultType="long">
+        SELECT note_id FROM collection_notes
+        WHERE collection_id = #{collectionId}
+        ORDER BY created_at DESC
+    </select>
+
+    <delete id="deleteByNoteId">
+        DELETE FROM collection_notes WHERE note_id = #{noteId}
+    </delete>
+
+    <delete id="deleteByCollectionId">
+        DELETE FROM collection_notes WHERE collection_id = #{collectionId}
+    </delete>
+
+    <select id="countByCreatorAndNote" resultType="long">
+        SELECT COUNT(*)
+        FROM collection_notes cn
+        JOIN collections c ON cn.collection_id = c.collection_id
+        WHERE c.creator_id = #{creatorId} AND cn.note_id = #{noteId}
+    </select>
+</mapper>

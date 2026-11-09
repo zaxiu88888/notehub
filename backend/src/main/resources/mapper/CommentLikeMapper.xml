@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.CommentLikeMapper">
+
+    <insert id="insert">
+        INSERT IGNORE INTO comment_likes (comment_id, user_id) VALUES (#{commentId}, #{userId})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM comment_likes WHERE comment_id = #{commentId} AND user_id = #{userId}
+    </delete>
+</mapper>

@@ -4,6 +4,7 @@ import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.CategoryMapper;
+import com.notehub.mapper.NoteMapper;
 import com.notehub.mapper.QuestionMapper;
 import com.notehub.model.dto.question.CreateQuestionBatchBody;
 import com.notehub.model.dto.question.QuestionQueryParam;
@@ -26,10 +27,13 @@ public class QuestionServiceImpl implements QuestionService {
 
     private final QuestionMapper questionMapper;
     private final CategoryMapper categoryMapper;
+    private final NoteMapper noteMapper;
 
-    public QuestionServiceImpl(QuestionMapper questionMapper, CategoryMapper categoryMapper) {
+    public QuestionServiceImpl(QuestionMapper questionMapper, CategoryMapper categoryMapper,
+                               NoteMapper noteMapper) {
         this.questionMapper = questionMapper;
         this.categoryMapper = categoryMapper;
+        this.noteMapper = noteMapper;
     }
 
     @Override
@@ -50,9 +54,16 @@ public class QuestionServiceImpl implements QuestionService {
         Question question = requireQuestion(questionId);
         questionMapper.incrementViewCount(questionId); // 浏览计数原子自增
         QuestionVO vo = toDetailVO(question);
-        // M3 笔记模块接入后: currentUserId != null 时回填 myNoteId
-        vo.setMyNoteId(null);
+        // 登录用户: 回填"我在该题下的笔记"(前端据此显示 编辑/已写 标记)
+        vo.setMyNoteId(currentUserId == null
+                ? null : findMyNoteId(currentUserId, questionId));
         return vo;
+    }
+
+    private Long findMyNoteId(Long userId, Long questionId) {
+        com.notehub.model.entity.Note note =
+                noteMapper.selectByAuthorAndQuestion(userId, questionId);
+        return note == null ? null : note.getNoteId();
     }
 
     @Override

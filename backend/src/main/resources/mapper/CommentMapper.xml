@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.CommentMapper">
+
+    <sql id="columns">
+        c.comment_id, c.note_id, c.author_id, c.parent_id, c.reply_to_id, c.content,
+        c.like_count, c.reply_count, c.is_deleted, c.created_at, c.updated_at,
+        u.username AS author_name, u.avatar_url AS author_avatar_url,
+        ru.username AS reply_to_user_name
+    </sql>
+
+    <sql id="fromJoin">
+        FROM comments c
+        JOIN users u ON c.author_id = u.user_id
+        LEFT JOIN comments rc ON c.reply_to_id = rc.comment_id
+        LEFT JOIN users ru ON rc.author_id = ru.user_id
+    </sql>
+
+    <!-- 顶层评论分页(parent_id IS NULL), 软删的也返回(前端显示"已删除") -->
+    <select id="selectTopLevel" resultType="com.notehub.model.entity.Comment">
+        SELECT <include refid="columns"/>
+        <include refid="fromJoin"/>
+        WHERE c.note_id = #{noteId} AND c.parent_id IS NULL
+        ORDER BY c.created_at ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countTopLevel" resultType="long">
+        SELECT COUNT(*) FROM comments
+        WHERE note_id = #{noteId} AND parent_id IS NULL
+    </select>
+
+    <!-- 楼中楼: 一条 IN 查询拿整页顶层评论的回复(防 N+1) -->
+    <select id="selectRepliesByParentIds" resultType="com.notehub.model.entity.Comment">
+        SELECT <include refid="columns"/>
+        <include refid="fromJoin"/>
+        WHERE c.parent_id IN
+        <foreach collection="parentIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY c.created_at ASC
+    </select>
+
+    <select id="selectById" resultType="com.notehub.model.entity.Comment">
+        SELECT <include refid="columns"/>
+        <include refid="fromJoin"/>
+        WHERE c.comment_id = #{commentId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="commentId" keyColumn="comment_id">
+        INSERT INTO comments (note_id, author_id, parent_id, reply_to_id, content)
+        VALUES (#{noteId}, #{authorId}, #{parentId}, #{replyToId}, #{content})
+    </insert>
+
+    <update id="updateContent">
+        UPDATE comments SET content = #{content}
+        WHERE comment_id = #{commentId} AND author_id = #{authorId} AND is_deleted = 0
+    </update>
+
+    <update id="softDelete">
+        UPDATE comments SET is_deleted = 1
+        WHERE comment_id = #{commentId} AND author_id = #{authorId} AND is_deleted = 0
+    </update>
+
+    <update id="adjustReplyCount">
+        UPDATE comments
+        SET reply_count = GREATEST(reply_count + #{delta}, 0)
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <update id="adjustLikeCount">
+        UPDATE comments
+        SET like_count = GREATEST(like_count + #{delta}, 0)
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <update id="softDeleteByNoteId">
+        UPDATE comments SET is_deleted = 1 WHERE note_id = #{noteId} AND is_deleted = 0
+    </update>
+
+    <select id="selectLikedCommentIds" resultType="long">
+        SELECT comment_id FROM comment_likes
+        WHERE user_id = #{userId} AND comment_id IN
+        <foreach collection="commentIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+</mapper>

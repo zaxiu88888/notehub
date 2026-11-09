@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.CollectionMapper">
+
+    <select id="listByCreator" resultType="com.notehub.model.entity.Collection">
+        SELECT collection_id, name, description, creator_id, created_at, updated_at
+        FROM collections
+        WHERE creator_id = #{creatorId}
+        ORDER BY created_at
+    </select>
+
+    <select id="selectById" resultType="com.notehub.model.entity.Collection">
+        SELECT collection_id, name, description, creator_id, created_at, updated_at
+        FROM collections
+        WHERE collection_id = #{collectionId}
+    </select>
+
+    <select id="countGroupByCollection" resultType="map">
+        SELECT c.collection_id AS collectionId, COUNT(cn.note_id) AS cnt
+        FROM collections c
+        LEFT JOIN collection_notes cn ON c.collection_id = cn.collection_id
+        WHERE c.creator_id = #{creatorId}
+        GROUP BY c.collection_id
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="collectionId" keyColumn="collection_id">
+        INSERT INTO collections (name, description, creator_id)
+        VALUES (#{name}, #{description}, #{creatorId})
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM collections WHERE collection_id = #{collectionId}
+    </delete>
+</mapper>

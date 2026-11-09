@@ -3,6 +3,33 @@
 > 每干一步追加一条。格式：日期 ｜ 做了什么 ｜ 测试/自审结论 ｜ commit ｜ 遗留问题
 
 
+
+---
+
+## [M3] 2026-11-09 ｜ 笔记核心（CRUD/聚合防N+1/点赞/收藏夹/评论/事件驱动消息）
+
+**做了什么**
+- 实体 7 个: Note/NoteLike/Collection/CollectionNote/Comment/CommentLike/Message(带联表附带列); 枚举 MessageType/MessageTargetType
+- Mapper 7 + XML 6: 列表联表作者/题目一次取齐; 批量互动状态 IN 查询; 原子计数 GREATEST(x+delta,0); INSERT IGNORE 幂等; 评论两级结构(顶层 parent_id IS NULL + 楼中楼批量 IN)
+- Service 6: NoteServiceImpl(CRUD + 聚合防N+1 + 收藏夹内容复用批量查)/NoteInteractionServiceImpl(点赞/评论写 + 事件发布)/CommentQueryServiceImpl(顶层分页+楼中楼装配+点赞标记)/CollectionServiceImpl(多收藏夹)/MessageServiceImpl(分类型未读)
+- 事件驱动: InteractionEvent + @TransactionalEventListener(AFTER_COMMIT) + @Async → 业务事务提交后才写消息, 回滚不产生幽灵消息; 自赞自评不通知; 楼中楼双收件人去重
+- Controller 5 组: notes/comments/like/collections/messages 共 23 个接口
+- M2 遗留收口: 题目详情 myNoteId 真实回填(注入 NoteMapper)
+
+**测试门**: 87/87 绿(新增 30 个: Note 7/Interaction 9/Comment 5/Collection 5/Message 3 + 越界页/批量查断言)
+**冒烟门(真环境 23 项)**: 写笔记→重复40901→myNoteId回填→点赞幂等→**点赞消息落库(unread like=1)**→评论+楼中楼→**评论消息(comment=1)**→全部已读归零→收藏夹(40301越权/40401校验/幂等added)→收藏数→评论点赞计数回落→删他人笔记40301
+
+**自审门(diff 自审 55 文件, 发现并修复 7 项)**
+1. 🐛 **deleteCollection 顺序 BUG**: 先删条目再查 noteId → 收藏数永不递减(真环境实测已修: 1→0)
+2. 🐛 **评论页码越界 500**: total>0 但本页空 → selectRepliesByParentIds 生成 IN () 语法错误
+3. 🐛 **listNotesByIds N+1**: 逐条 selectById(页大小=SQL 数) → 新增 selectByIds 批量 + 顺序还原
+4. 🐛 **createNote 未校验题目存在** → 可写出挂幽灵题的笔记; 已加 40401
+5. 🐛 **PATCH 复用创建 DTO**: 编辑笔记/评论被迫带 questionId/noteId → 拆 NoteUpdateBody/CommentUpdateBody
+6. 🐛 **收藏数多夹误递减**: 用户其他夹仍收着也扣 → countByCreatorAndNote 判定(remove+delete 两处)
+7. 🐛 **评论点赞消息 target 错误**(指向笔记) → InteractionEvent.likeComment(targetType=COMMENT, targetId=commentId); 另 OGNL 字符串比较改 'hot'.equals 规范写法
+- ⚠️ 已知限制(记录待迭代): ① 同一用户多夹重复收藏同一笔记时 collect_count 语义为夹条目数-跨夹去重(已用 OTHER 判定收敛, 极端场景仍可能偏差, I5 用唯一化统计表治理) ② 收藏夹路径不写 note_collects(判定已 UNION 兼容) ③ 消息投递失败仅记日志不重试(I3 WebSocket 时加可靠投递)
+**commit**: (本次提交)
+**遗留**: 前端未开始(M5)
 ---
 
 ## [S2] 2026-11-09 ｜ Docker/Redis 环境攻克 + 邮件验证码/注册全链路回归

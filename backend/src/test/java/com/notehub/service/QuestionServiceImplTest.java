@@ -4,6 +4,7 @@ import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.CategoryMapper;
+import com.notehub.mapper.NoteMapper;
 import com.notehub.mapper.QuestionMapper;
 import com.notehub.model.dto.question.CreateQuestionBatchBody;
 import com.notehub.model.dto.question.QuestionQueryParam;
@@ -36,13 +37,15 @@ class QuestionServiceImplTest {
 
     private QuestionMapper questionMapper;
     private CategoryMapper categoryMapper;
+    private NoteMapper noteMapper;
     private QuestionServiceImpl questionService;
 
     @BeforeEach
     void setUp() {
         questionMapper = mock(QuestionMapper.class);
         categoryMapper = mock(CategoryMapper.class);
-        questionService = new QuestionServiceImpl(questionMapper, categoryMapper);
+        noteMapper = mock(NoteMapper.class);
+        questionService = new QuestionServiceImpl(questionMapper, categoryMapper, noteMapper);
     }
 
     private Category category() {
@@ -93,6 +96,21 @@ class QuestionServiceImplTest {
         verify(questionMapper).incrementViewCount(2L);
         assertNull(vo.getMyNoteId());
         assertEquals("两数之和", vo.getTitle());
+    }
+
+    @Test
+    @DisplayName("详情: 登录时回填我的笔记 ID(题目页编辑入口)")
+    void detailFillsMyNoteId() {
+        when(questionMapper.selectById(2L)).thenReturn(question());
+        com.notehub.model.entity.Note myNote = new com.notehub.model.entity.Note();
+        myNote.setNoteId(77L);
+        when(noteMapper.selectByAuthorAndQuestion(7L, 2L)).thenReturn(myNote);
+
+        QuestionVO vo = questionService.getQuestionDetail(2L, 7L);
+        assertEquals(77L, vo.getMyNoteId());
+
+        when(noteMapper.selectByAuthorAndQuestion(8L, 2L)).thenReturn(null);
+        assertNull(questionService.getQuestionDetail(2L, 8L).getMyNoteId());
     }
 
     @Test
