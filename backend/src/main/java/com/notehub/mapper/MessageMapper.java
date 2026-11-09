@@ -22,6 +22,8 @@ public interface MessageMapper {
 
     long countUnread(@Param("receiverId") Long receiverId);
 
+    Message selectById(@Param("messageId") Long messageId);
+
     int insert(Message message);
 
     /** 单条已读(归属校验) */

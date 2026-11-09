@@ -2,6 +2,7 @@ package com.notehub.service.impl;
 
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
+import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.CollectionNoteMapper;
 import com.notehub.mapper.CommentMapper;
@@ -45,13 +46,13 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public PageVO<NoteVO> listNotes(NoteQueryParams params, Long currentUserId) {
-        int pageSize = Math.min(Math.max(params.getPageSize(), 1), 50);
-        int page = Math.max(params.getPage(), 1);
+        int pageSize = PageUtils.clampPageSize(params.getPageSize());
+        int page = PageUtils.clampPage(params.getPage());
         params.setPage(page);
         params.setPageSize(pageSize);
 
         long total = noteMapper.countByQuery(params);
-        List<Note> notes = noteMapper.listByQuery(params, (page - 1) * pageSize, pageSize);
+        List<Note> notes = noteMapper.listByQuery(params, PageUtils.offset(page, pageSize), pageSize);
         return PageVO.of(toVOs(notes, currentUserId), page, pageSize, total);
     }
 
@@ -109,8 +110,8 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public PageVO<NoteVO> listNotesByIds(List<Long> noteIds, int page, int pageSize, Long currentUserId) {
-        pageSize = Math.min(Math.max(pageSize, 1), 50);
-        page = Math.max(page, 1);
+        pageSize = PageUtils.clampPageSize(pageSize);
+        page = PageUtils.clampPage(page);
         if (noteIds == null || noteIds.isEmpty()) {
             return PageVO.of(List.of(), page, pageSize, 0);
         }

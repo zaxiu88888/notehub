@@ -2,6 +2,7 @@ package com.notehub.service.impl;
 
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
+import com.notehub.common.RetryOnDeadlock;
 import com.notehub.event.InteractionEvent;
 import com.notehub.mapper.CommentLikeMapper;
 import com.notehub.mapper.CommentMapper;
@@ -41,6 +42,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     }
 
     @Override
+    @RetryOnDeadlock
     @Transactional
     public int likeNote(Long noteId, Long userId) {
         Note note = requireNote(noteId);
@@ -58,6 +60,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     }
 
     @Override
+    @RetryOnDeadlock
     @Transactional
     public void unlikeNote(Long noteId, Long userId) {
         requireNote(noteId);
@@ -134,13 +137,19 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
         if (deleted == 0) {
             throw BusinessException.of(ErrorCode.BAD_PARAM, "评论已删除");
         }
-        noteMapper.adjustCommentCount(comment.getNoteId(), -1);
+        // 级联: 顶层评论删除时, 其楼中楼一并软删(契约 §8), 计数按实际删除条数递减
+        long activeReplies = commentMapper.countActiveReplies(commentId);
+        if (activeReplies > 0) {
+            commentMapper.softDeleteReplies(commentId);
+        }
+        noteMapper.adjustCommentCount(comment.getNoteId(), (int) -(1 + activeReplies));
         if (comment.getParentId() != null) {
             commentMapper.adjustReplyCount(comment.getParentId(), -1);
         }
     }
 
     @Override
+    @RetryOnDeadlock
     @Transactional
     public void likeComment(Long commentId, Long userId) {
         Comment comment = requireComment(commentId);
@@ -158,6 +167,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     }
 
     @Override
+    @RetryOnDeadlock
     @Transactional
     public void unlikeComment(Long commentId, Long userId) {
         requireComment(commentId);

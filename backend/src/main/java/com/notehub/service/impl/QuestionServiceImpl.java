@@ -2,6 +2,7 @@ package com.notehub.service.impl;
 
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
+import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.CategoryMapper;
 import com.notehub.mapper.NoteMapper;
@@ -38,13 +39,17 @@ public class QuestionServiceImpl implements QuestionService {
 
     @Override
     public PageVO<QuestionVO> listQuestions(QuestionQueryParam param) {
-        int pageSize = Math.min(Math.max(param.getPageSize(), 1), 50);
-        int page = Math.max(param.getPage(), 1);
+        if (param.getDifficulty() != null
+                && (param.getDifficulty() < 1 || param.getDifficulty() > 3)) {
+            throw BusinessException.of(ErrorCode.BAD_PARAM, "difficulty 取值 1/2/3");
+        }
+        int pageSize = PageUtils.clampPageSize(param.getPageSize());
+        int page = PageUtils.clampPage(param.getPage());
         param.setPage(page);
         param.setPageSize(pageSize);
 
         long total = questionMapper.countByQuery(param);
-        List<QuestionVO> list = questionMapper.listByQuery(param, (page - 1) * pageSize, pageSize)
+        List<QuestionVO> list = questionMapper.listByQuery(param, PageUtils.offset(page, pageSize), pageSize)
                 .stream().map(this::toListVO).toList();
         return PageVO.of(list, page, pageSize, total);
     }

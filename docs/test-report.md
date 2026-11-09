@@ -75,3 +75,26 @@ cd frontend && npm test && npm run dev              # :5173
 ```
 
 > 验收数据已在测试后清理（测试账号/笔记/收藏夹/消息均删除，用户表恢复为 2 个种子账号）。
+
+---
+
+## 8. 独立复测问题修复记录（2026-11-09 第二轮）
+
+外部独立测试（661 检查点）提交 12 个缺陷，已全部修复并回归：
+
+| # | 级别 | 问题 | 修复 | 验证 |
+|---|---|---|---|---|
+| 1 | P1 | 非法 email / 错误方法 / 错误 Content-Type 均落到 500 | 补 ConstraintViolationException→40001、HttpRequestMethodNotSupportedException→405(40500)、HttpMediaTypeNotSupportedException→415(41500)、BindException→40001 | HTTP 200/40001、405/40500、415/41500 实测 |
+| 2 | P1 | 并发点赞+取消触发死锁返回 500（100 次 4~17 次） | 新增 `@RetryOnDeadlock` + `DeadlockRetryAspect`（事务外层、指数退避 3 次）；兜底映射 40902 可重试码 | 100 次混合并发 **0 个 500 / 0 个 40902** |
+| 3 | P1 | 删除父评论未级联软删回复 | `softDeleteReplies` + `countActiveReplies`，commentCount 按 1+回复数 递减 | 两回复均 isDeleted=1，commentCount=0 |
+| 4 | P2 | page=2147483647 整数溢出负 OFFSET → 500 | 新增 `PageUtils`：page 上限 100 万、pageSize 1~50，全服务统一 | 5 个分页接口均 200 空页 |
+| 5 | P2 | 越权已读/删除他人消息返回 200 | 0 影响行时校验归属，非本人 → 40401 | PATCH/DELETE 他人消息均 40401 |
+| 6 | P2 | 回复消息 targetType=2 但 targetId=笔记 ID | 统一 replyComment → targetType=NOTE + noteId；COMMENT 仅用于评论点赞 | 消息 targetType=1 + noteId=目标笔记 |
+| 7 | P2 | 普通用户 /admin 被静默重定向，403 不可达 | 移除自动跳转，稳定渲染 403 页 | 浏览器停留 /admin 并显示 403 |
+| 8 | P2 | 匿名+非法 body 访问管理接口先报 40001 | TokenInterceptor 对 /api/admin/** 前置校验（早于参数绑定） | 匿名 {}=>40101、普通用户=>40102 |
+| 9 | P2 | 验证码限流键大小写敏感可绕过 | email 统一 trim+lowercase（发送/校验/投递三处） | 大写发送后小写重发 => 41002 |
+| 10 | P2 | page=abc 错误消息回显 Java 类型细节 | 绑定失败(isBindingFailure)统一「参数类型不正确」 | 实测文案已通用 |
+| 11 | P2 | 校验文案重复字段名（content content…） | handler 不再拼接字段名，直接用 DTO 文案 | 单测覆盖 |
+| 12 | P2 | 契约与实现不一致 / difficulty 未校验 | 契约补 40500/41500/40902 与 /notes/mine 说明；difficulty 非 1~3 → 40001 | 实测 difficulty=9 => 40001 |
+
+**回归结果**：后端 123/123、前端 18/18、构建通过、修复复测 7/7、并发 100 次 0 失败。

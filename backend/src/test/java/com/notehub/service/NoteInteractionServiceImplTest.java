@@ -171,6 +171,42 @@ class NoteInteractionServiceImplTest {
     }
 
     @Test
+    @DisplayName("删父评论级联: 回复一并软删, commentCount 按 1+回复数 递减")
+    void deleteParentCascadesReplies() {
+        when(commentMapper.selectById(300L)).thenReturn(comment(300L, 10L, 7L, null));
+        when(commentMapper.softDelete(300L, 7L)).thenReturn(1);
+        when(commentMapper.countActiveReplies(300L)).thenReturn(2L);
+
+        service.deleteComment(300L, 7L);
+
+        verify(commentMapper).softDeleteReplies(300L);
+        verify(noteMapper).adjustCommentCount(10L, -3); // 1 条父 + 2 条回复
+    }
+
+    @Test
+    @DisplayName("回复消息目标: targetType=NOTE + noteId(前端可跳转)")
+    void replyEventTargetsNote() {
+        when(noteMapper.selectById(10L)).thenReturn(note(10L, 2L));
+        when(commentMapper.selectById(400L)).thenReturn(comment(400L, 10L, 9L, 300L));
+        when(commentMapper.insert(any(Comment.class))).thenAnswer(inv -> {
+            inv.getArgument(0, Comment.class).setCommentId(502L);
+            return 1;
+        });
+
+        service.addComment(10L, 7L, 400L, "回复");
+
+        org.mockito.ArgumentCaptor<org.springframework.context.ApplicationEvent> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.context.ApplicationEvent.class);
+        verify(publisher, times(2)).publishEvent(captor.capture());
+        java.util.List<InteractionEvent> events = captor.getAllValues().stream()
+                .map(o -> (InteractionEvent) o).toList();
+        events.forEach(e -> {
+            assertEquals(com.notehub.model.enums.MessageTargetType.NOTE, e.getTargetType());
+            assertEquals(10L, e.getTargetId());
+        });
+    }
+
+    @Test
     @DisplayName("评论点赞: 原子计数+通知评论作者(自赞除外)")
     void likeComment() {
         when(commentMapper.selectById(400L)).thenReturn(comment(400L, 10L, 9L, null));

@@ -24,6 +24,12 @@ public enum ErrorCode {
 
     /** 冲突 */
     DUPLICATED(40901, "数据已存在"),
+    /** 并发冲突(死锁重试后仍失败, 可安全重试) */
+    CONFLICT_RETRY(40902, "操作冲突, 请稍后重试"),
+
+    /** HTTP 语义错误 */
+    METHOD_NOT_ALLOWED(40500, "请求方法不支持"),
+    UNSUPPORTED_MEDIA_TYPE(41500, "请求内容类型不支持"),
 
     /** 验证码/邮件 */
     CODE_INVALID(41001, "验证码错误或已过期"),

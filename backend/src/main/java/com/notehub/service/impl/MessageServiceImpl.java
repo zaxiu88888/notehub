@@ -1,5 +1,8 @@
 package com.notehub.service.impl;
 
+import com.notehub.common.BusinessException;
+import com.notehub.common.ErrorCode;
+import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.MessageMapper;
 import com.notehub.model.dto.message.MessageQueryParams;
@@ -25,14 +28,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public PageVO<MessageVO> listMessages(Long userId, MessageQueryParams params) {
-        int pageSize = Math.min(Math.max(params.getPageSize(), 1), 50);
-        int page = Math.max(params.getPage(), 1);
+        int pageSize = PageUtils.clampPageSize(params.getPageSize());
+        int page = PageUtils.clampPage(params.getPage());
         params.setReceiverId(userId);
         params.setPage(page);
         params.setPageSize(pageSize);
 
         long total = messageMapper.countByQuery(params);
-        List<MessageVO> list = messageMapper.listByQuery(params, (page - 1) * pageSize, pageSize)
+        List<MessageVO> list = messageMapper.listByQuery(params, PageUtils.offset(page, pageSize), pageSize)
                 .stream().map(this::toVO).toList();
         return PageVO.of(list, page, pageSize, total);
     }
@@ -53,7 +56,11 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void markRead(Long userId, Long messageId) {
-        messageMapper.markRead(messageId, userId); // 未读才置读, 幂等
+        int updated = messageMapper.markRead(messageId, userId);
+        if (updated == 0) {
+            // 0 影响行: 已读(幂等) 或 不存在/非本人消息 → 后者按 40401 处理
+            requireOwnMessage(messageId, userId);
+        }
     }
 
     @Override
@@ -72,7 +79,19 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void deleteMessage(Long userId, Long messageId) {
-        messageMapper.delete(messageId, userId);
+        int deleted = messageMapper.delete(messageId, userId);
+        if (deleted == 0) {
+            requireOwnMessage(messageId, userId);
+        }
+    }
+
+    /** 消息必须存在且属于当前用户, 否则 40401(不泄露他人消息是否存在) */
+    private void requireOwnMessage(Long messageId, Long userId) {
+        Message message = messageMapper.selectById(messageId);
+        if (message == null || message.getReceiverId() == null
+                || !message.getReceiverId().equals(userId)) {
+            throw BusinessException.of(ErrorCode.NOT_FOUND, "消息不存在或无权操作");
+        }
     }
 
     private MessageVO toVO(Message message) {

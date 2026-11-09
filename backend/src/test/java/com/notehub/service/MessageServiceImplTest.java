@@ -64,6 +64,26 @@ class MessageServiceImplTest {
     }
 
     @Test
+    @DisplayName("越权操作他人消息 → 40401(不再静默成功)")
+    void foreignMessageRejected() {
+        // 更新/删除影响行数 0, 且消息属于别的接收者
+        com.notehub.model.entity.Message foreign = new com.notehub.model.entity.Message();
+        foreign.setMessageId(100L);
+        foreign.setReceiverId(99L);
+        when(messageMapper.selectById(100L)).thenReturn(foreign);
+
+        com.notehub.common.BusinessException e1 = org.junit.jupiter.api.Assertions.assertThrows(
+                com.notehub.common.BusinessException.class, () -> service.markRead(7L, 100L));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                com.notehub.common.ErrorCode.NOT_FOUND, e1.getErrorCode());
+
+        com.notehub.common.BusinessException e2 = org.junit.jupiter.api.Assertions.assertThrows(
+                com.notehub.common.BusinessException.class, () -> service.deleteMessage(7L, 100L));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                com.notehub.common.ErrorCode.NOT_FOUND, e2.getErrorCode());
+    }
+
+    @Test
     @DisplayName("消息列表: 参数回填 receiverId, 系统消息(sender=0)不带 sender 摘要")
     void listMessages() {
         when(messageMapper.countByQuery(any())).thenReturn(2L);
@@ -83,9 +103,11 @@ class MessageServiceImplTest {
     @Test
     @DisplayName("标记已读/删除: 均以 receiverId 归属过滤")
     void readAndDeleteScope() {
+        when(messageMapper.markRead(100L, 7L)).thenReturn(1);
         service.markRead(7L, 100L);
         verify(messageMapper).markRead(100L, 7L);
 
+        when(messageMapper.delete(100L, 7L)).thenReturn(1);
         service.deleteMessage(7L, 100L);
         verify(messageMapper).delete(100L, 7L);
 

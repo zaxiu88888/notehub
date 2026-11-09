@@ -28,6 +28,11 @@ import java.util.regex.Pattern;
 @Service
 public class EmailServiceImpl implements EmailService {
 
+    /** 去空白 + 小写, 与 DB(utf8mb4_unicode_ci) 的大小写不敏感保持一致 */
+    private static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$");
 
     private final RedisService redisService;
@@ -55,7 +60,9 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public String sendVerifyCode(String email) {
+    public String sendVerifyCode(String rawEmail) {
+        // 归一化: DB 邮箱唯一索引大小写不敏感, Redis 键必须同口径, 否则限流可被大小写绕过
+        String email = normalizeEmail(rawEmail);
         if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
             throw BusinessException.of(ErrorCode.BAD_PARAM, "email 格式不正确");
         }
@@ -85,7 +92,8 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public boolean verifyAndConsumeCode(String email, String code) {
+    public boolean verifyAndConsumeCode(String rawEmail, String code) {
+        String email = normalizeEmail(rawEmail);
         String key = RedisKey.verifyCode(email);
         String cached = redisService.get(key);
         if (cached == null || !cached.equals(code)) {
@@ -96,13 +104,15 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void deliverTask(EmailTask task) {        SimpleMailMessage message = new SimpleMailMessage();
+    public void deliverTask(EmailTask task) {
+        String email = normalizeEmail(task.getEmail());
+        SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
-        message.setTo(task.getEmail());
+        message.setTo(email);
         message.setSubject("notehub 注册验证码");
         message.setText("您的验证码是: " + task.getCode() + ", " + expireSeconds / 60 + " 分钟内有效, 请勿泄露。");
         mailSender.send(message);
-        redisService.set(RedisKey.verifyCode(task.getEmail()), task.getCode(), Duration.ofSeconds(expireSeconds));
-        log.info("[邮件] 验证码已发送: {}", task.getEmail());
+        redisService.set(RedisKey.verifyCode(email), task.getCode(), Duration.ofSeconds(expireSeconds));
+        log.info("[邮件] 验证码已发送: {}", email);
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { App, Layout, Menu, Result, Spin, Typography } from 'antd';
+import { Layout, Menu, Result, Spin, Typography } from 'antd';
 import {
   DashboardOutlined,
   FileTextOutlined,
@@ -7,7 +7,7 @@ import {
   ProfileOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchWhoamiThunk } from '@/store/userSlice';
 
@@ -26,8 +26,6 @@ export default function AdminLayout() {
   const dispatch = useAppDispatch();
   const { token, user } = useAppSelector((s) => s.user);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { message } = App.useApp();
 
   // 直接进入 /admin 时用户端布局未挂载: 这里自行恢复登录信息, 否则会一直卡在"校验权限中"
   useEffect(() => {
@@ -36,13 +34,7 @@ export default function AdminLayout() {
     }
   }, [token, user, dispatch]);
 
-  useEffect(() => {
-    if (token && user && user.isAdmin !== 1) {
-      message.warning('需要管理员权限');
-      navigate('/');
-    }
-  }, [token, user, message, navigate]);
-
+  // 注意: 非管理员不做自动跳转(否则 403 页不可达), 由下方稳定渲染 403
   if (!token) return <Navigate to="/" replace />;
   if (!user) {
     return (

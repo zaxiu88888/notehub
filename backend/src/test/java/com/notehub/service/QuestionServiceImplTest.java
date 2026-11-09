@@ -87,6 +87,31 @@ class QuestionServiceImplTest {
     }
 
     @Test
+    @DisplayName("列表: 非法 difficulty → 40001")
+    void invalidDifficultyRejected() {
+        com.notehub.model.dto.question.QuestionQueryParam param =
+                new com.notehub.model.dto.question.QuestionQueryParam();
+        param.setDifficulty(9);
+
+        BusinessException e = assertThrows(BusinessException.class, () -> questionService.listQuestions(param));
+        assertEquals(ErrorCode.BAD_PARAM, e.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("分页溢出: page=Integer.MAX_VALUE 被钳制, 不产生负 offset")
+    void hugePageClamped() {
+        when(questionMapper.countByQuery(any())).thenReturn(0L);
+        when(questionMapper.listByQuery(any(), anyInt(), anyInt())).thenReturn(List.of());
+        com.notehub.model.dto.question.QuestionQueryParam param =
+                new com.notehub.model.dto.question.QuestionQueryParam();
+        param.setPage(Integer.MAX_VALUE);
+
+        PageVO<QuestionVO> page = questionService.listQuestions(param);
+
+        assertEquals(com.notehub.common.PageUtils.MAX_PAGE, page.getPage());
+    }
+
+    @Test
     @DisplayName("详情: 浏览数自增; 未登录 myNoteId 为 null")
     void detailIncrementsView() {
         when(questionMapper.selectById(2L)).thenReturn(question());

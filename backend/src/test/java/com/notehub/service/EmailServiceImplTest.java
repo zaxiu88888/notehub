@@ -93,6 +93,21 @@ class EmailServiceImplTest {
     }
 
     @Test
+    @DisplayName("限流/验证码键大小写归一: 大写邮箱写小写键(防绕过)")
+    void emailNormalizedToLowerCase() {
+        when(redisService.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+
+        devModeService.sendVerifyCode("  User@Example.COM ");
+
+        verify(redisService).setIfAbsent(
+                eq(com.notehub.model.enums.RedisKey.verifyCodeLimit("user@example.com")),
+                eq("1"), any(Duration.class));
+        verify(redisService).set(
+                eq(com.notehub.model.enums.RedisKey.verifyCode("user@example.com")),
+                anyString(), any(Duration.class));
+    }
+
+    @Test
     @DisplayName("verifyAndConsumeCode: 匹配即消费(删除); 不匹配/过期返回 false")
     void verifyAndConsume() {
         when(redisService.get(RedisKey.verifyCode("a@b.com"))).thenReturn("654321");

@@ -87,7 +87,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | 方法 | 路径 | 权限 | 说明 |
 |---|---|---|---|
 | GET | `/notes` | 🌐 | 列表：questionId、authorId 筛选；聚合作者/题目/我的互动状态（防N+1） |
-| GET | `/notes/mine` | 🔒 | 我的笔记（userCenter 用） |
+| GET | `/notes/mine?questionId=` | 🔒 | 我在该题下的笔记ID（无则 -1）；个人中心列表用 `GET /notes?authorId=` |
 | POST | `/notes` | 🔒 | `{questionId, content}`（Markdown，≤50000 字） |
 | PATCH | `/notes/{noteId}` | 🔒 | 仅作者（40301） |
 | DELETE | `/notes/{noteId}` | 🔒 | 仅作者 |
@@ -133,7 +133,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | GET | `/messages` | 列表 `type`(1赞/2评/3系统) 筛选分页；MessageVO 含发送者摘要+目标摘要 |
 | GET | `/messages/unread/count` | `{total, like, comment, system}` 分类型未读数（前端 30s 轮询） |
 | PATCH | `/messages/{messageId}/read` | 单条已读 |
-| PATCH | `/messages/all/read` | 全部已读 |
+| PATCH | `/messages/all/read` | 全部已读（非本人消息操作返回 40401） |
 | PATCH | `/messages/batch/read` | `{messageIds:[]}` |
 | DELETE | `/messages/{messageId}` | 删除 |
 

@@ -61,6 +61,16 @@
         WHERE comment_id = #{commentId} AND author_id = #{authorId} AND is_deleted = 0
     </update>
 
+    <!-- 级联: 父评论删除时一并软删其楼中楼 -->
+    <update id="softDeleteReplies">
+        UPDATE comments SET is_deleted = 1
+        WHERE parent_id = #{parentId} AND is_deleted = 0
+    </update>
+
+    <select id="countActiveReplies" resultType="long">
+        SELECT COUNT(*) FROM comments WHERE parent_id = #{parentId} AND is_deleted = 0
+    </select>
+
     <update id="adjustReplyCount">
         UPDATE comments
         SET reply_count = GREATEST(reply_count + #{delta}, 0)

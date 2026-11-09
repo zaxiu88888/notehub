@@ -10,6 +10,20 @@
 
 
 
+
+---
+
+## [S4] 2026-11-09 ｜ 独立复测缺陷修复（3×P1 + 9×P2 全部闭环）
+
+**做了什么**
+- P1: 客户端异常 4xx 映射(40001/405/415/BindException) / 死锁重试切面(0×500) / 删父评论级联软删+计数
+- P2: 分页溢出钳制 / 消息越权 40401 / 回复消息 target 统一 / /admin 403 稳定 / admin 前置守卫 / 邮箱限流大小写 / 错误文案去 Java 细节与字段重复 / difficulty 校验 / 契约文档同步
+- 新增测试 22 个: GlobalExceptionHandler(9) / DeadlockRetryAspect(3) / PageUtils(3) / TokenInterceptor(4) / 级联与回复 target / 邮箱归一 / difficulty / 绑定失败文案
+- 文档: docs/test-report.md 追加"第二轮修复记录"12 条；technical-design 错误码表补 40902/40500/41500 并把 40001 的 HTTP 列改为 200；api-contract 修正 /notes/mine 与消息越权说明
+
+**测试门**: 后端 123/123；前端 18/18；构建通过；真实环境修复复测 7/7（含 100 次并发混合点赞 0×500）；浏览器 /admin 403 稳定
+**自审门**: 修复过程中另修正 3 处自身疏漏（preHandle 三参签名、deliverTask 变量遗漏、FieldError 构造参数），均已在提交前通过测试
+**commit**: (本次提交)
 ---
 
 ## [S3] 2026-11-09 ｜ 全量验收（后端 101 + 前端 18 + E2E 44）

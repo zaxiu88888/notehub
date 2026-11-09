@@ -42,11 +42,14 @@ public class InteractionEvent extends ApplicationEvent {
                 MessageType.COMMENT, MessageTargetType.NOTE, noteId, excerpt);
     }
 
-    /** 回复评论(楼中楼) */
+    /**
+     * 回复评论(楼中楼): 目标统一指向所属笔记(targetType=NOTE + noteId),
+     * 前端据此跳到题目页; targetType=COMMENT 保留给"评论点赞"(targetId=commentId)
+     */
     public static InteractionEvent replyComment(Object source, Long receiverId, Long senderId,
                                                 Long noteId, String excerpt) {
         return new InteractionEvent(source, receiverId, senderId,
-                MessageType.COMMENT, MessageTargetType.COMMENT, noteId, excerpt);
+                MessageType.COMMENT, MessageTargetType.NOTE, noteId, excerpt);
     }
 
     /** 点赞评论: 目标是评论本身(前端据此跳转定位) */

@@ -2,6 +2,7 @@ package com.notehub.service.impl;
 
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
+import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.UserMapper;
 import com.notehub.model.dto.user.LoginRequest;
@@ -121,13 +122,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageVO<UserVO> listUsers(UserQueryParam param) {
-        int pageSize = Math.min(Math.max(param.getPageSize(), 1), 50);
-        int page = Math.max(param.getPage(), 1);
+        int pageSize = PageUtils.clampPageSize(param.getPageSize());
+        int page = PageUtils.clampPage(param.getPage());
         param.setPageSize(pageSize);
         param.setPage(page);
 
         long total = userMapper.countByQuery(param);
-        int offset = (page - 1) * pageSize;
+        int offset = PageUtils.offset(page, pageSize);
         List<UserVO> list = userMapper.listByQuery(param, offset, pageSize).stream()
                 .map(this::toVO)
                 .toList();

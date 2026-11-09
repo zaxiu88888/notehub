@@ -36,6 +36,13 @@
         SELECT COUNT(*) FROM messages WHERE receiver_id = #{receiverId} AND is_read = 0
     </select>
 
+    <select id="selectById" resultType="com.notehub.model.entity.Message">
+        SELECT message_id, receiver_id, sender_id, type, target_type, target_id,
+               content, is_read, created_at, updated_at
+        FROM messages
+        WHERE message_id = #{messageId}
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="messageId" keyColumn="message_id">
         INSERT INTO messages (receiver_id, sender_id, type, target_type, target_id, content)
         VALUES (#{receiverId}, #{senderId}, #{type}, #{targetType}, #{targetId}, #{content})

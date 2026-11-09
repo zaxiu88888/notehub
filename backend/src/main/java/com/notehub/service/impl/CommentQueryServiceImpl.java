@@ -1,5 +1,6 @@
 package com.notehub.service.impl;
 
+import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
 import com.notehub.mapper.CommentMapper;
 import com.notehub.model.entity.Comment;
@@ -27,14 +28,14 @@ public class CommentQueryServiceImpl implements CommentQueryService {
 
     @Override
     public PageVO<CommentVO> listComments(Long noteId, int page, int pageSize, Long currentUserId) {
-        pageSize = Math.min(Math.max(pageSize, 1), 50);
-        page = Math.max(page, 1);
+        pageSize = PageUtils.clampPageSize(pageSize);
+        page = PageUtils.clampPage(page);
 
         long total = commentMapper.countTopLevel(noteId);
         if (total == 0) {
             return PageVO.of(List.of(), page, pageSize, 0);
         }
-        List<Comment> topLevel = commentMapper.selectTopLevel(noteId, (page - 1) * pageSize, pageSize);
+        List<Comment> topLevel = commentMapper.selectTopLevel(noteId, PageUtils.offset(page, pageSize), pageSize);
         if (topLevel.isEmpty()) { // 页码越界: 不能走后续 IN () 查询(SQL 语法会炸)
             return PageVO.of(List.of(), page, pageSize, total);
         }
