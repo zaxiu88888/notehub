@@ -65,7 +65,7 @@ export default function NoteEditorModal({
       onCancel={onClose}
       title={noteId ? '编辑笔记' : '写笔记'}
       width={1000}
-      destroyOnClose
+      destroyOnHidden
       footer={
         <Space>
           <Typography.Text type="secondary">{content.length}/{MAX_LEN}</Typography.Text>

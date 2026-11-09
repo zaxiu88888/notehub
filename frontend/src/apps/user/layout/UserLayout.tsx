@@ -1,20 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Avatar, Button, Dropdown, Layout, Menu, Space, Typography, App } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+import { Avatar, Badge, Button, Dropdown, Layout, Menu, Space, Typography, App } from 'antd';
+import { MessageOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { UNAUTHORIZED_EVENT } from '@/request/http';
+import { getUnreadCount } from '@/domain/note/api';
 import { fetchWhoamiThunk, logout } from '@/store/userSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import LoginModal from '@/domain/user/components/LoginModal';
 
 const { Header, Content, Footer } = Layout;
 
-const NAV_ITEMS = [
-  { key: '/', label: <Link to="/">首页</Link> },
-  { key: '/question-lists', label: <Link to="/question-lists">题单</Link> },
-];
-
-/** 用户端整体布局: 顶部导航 + 内容区 + 页脚 */
+/** 用户端整体布局: 顶部导航(消息角标 30s 轮询) + 内容区 + 页脚 */
 export default function UserLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -22,6 +18,7 @@ export default function UserLayout() {
   const { message } = App.useApp();
   const { token, user } = useAppSelector((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   // 有 token 时恢复登录态
   useEffect(() => {
@@ -30,11 +27,31 @@ export default function UserLayout() {
     }
   }, [token, user, dispatch]);
 
-  // 全局会话失效: 清状态并弹登录框
+  // 未读消息轮询(30s): 登录后开启, 退出即停; I3 迭代会换成 WebSocket 推送
   useEffect(() => {
-    const onUnauthorized = () => {
-      setLoginOpen(true);
+    if (!token) {
+      setUnread(0);
+      return;
+    }
+    let cancelled = false;
+    const pull = () => {
+      getUnreadCount()
+        .then((c) => {
+          if (!cancelled) setUnread(c.total);
+        })
+        .catch(() => undefined);
     };
+    pull();
+    const timer = setInterval(pull, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [token]);
+
+  // 全局会话失效: 弹登录框
+  useEffect(() => {
+    const onUnauthorized = () => setLoginOpen(true);
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
@@ -44,6 +61,25 @@ export default function UserLayout() {
     message.success('已退出登录');
     navigate('/');
   };
+
+  const navItems = [
+    { key: '/', label: <Link to="/">首页</Link> },
+    { key: '/question-lists', label: <Link to="/question-lists">题单</Link> },
+    ...(token
+      ? [
+          {
+            key: '/messages',
+            label: (
+              <Link to="/messages">
+                <Badge count={unread} size="small" offset={[6, -2]}>
+                  <MessageOutlined /> 消息
+                </Badge>
+              </Link>
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -68,18 +104,21 @@ export default function UserLayout() {
           <Menu
             mode="horizontal"
             selectedKeys={[location.pathname]}
-            items={NAV_ITEMS}
+            items={navItems}
             style={{ flex: 1, minWidth: 200, borderBottom: 'none' }}
           />
           {token && user ? (
             <Dropdown
               menu={{
                 items: [
+                  { key: 'center', label: '个人中心', onClick: () => navigate('/user-center') },
                   {
-                    key: 'logout',
-                    label: '退出登录',
-                    onClick: handleLogout,
+                    key: 'home',
+                    label: '我的主页',
+                    onClick: () => navigate(`/users/${user.userId}`),
                   },
+                  { type: 'divider' },
+                  { key: 'logout', label: '退出登录', onClick: handleLogout },
                 ],
               }}
             >

@@ -78,7 +78,7 @@ export default function LoginModal({ open, onClose }: Props) {
   };
 
   return (
-    <Modal open={open} onCancel={onClose} footer={null} width={420} destroyOnClose>
+    <Modal open={open} onCancel={onClose} footer={null} width={420} destroyOnHidden>
       <Tabs
         activeKey={tab}
         onChange={setTab}

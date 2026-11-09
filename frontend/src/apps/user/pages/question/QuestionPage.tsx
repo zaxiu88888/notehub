@@ -190,7 +190,7 @@ export default function QuestionPage() {
         onClose={() => setCommentNoteId(null)}
         title="评论"
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         {commentNoteId != null && (
           // 注意: 不要把 onCountChange 接回整页 reload(会卸载抽屉并形成重挂载循环)
