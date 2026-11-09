@@ -25,6 +25,19 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // antd 全量组件约 700KB(gzip 235KB), 属该体量应用正常范围; 已拆 vendor 便于缓存
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          antd: ['antd', '@ant-design/icons'],
+          editor: ['cherry-markdown'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

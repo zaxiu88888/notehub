@@ -24,8 +24,9 @@
 - ✅ 修复 a11y: 分类/难度筛选无访问名(自动化与读屏都无法定位) → 加 aria-label, 浏览器验证通过
 - ✅ 修复时序缺陷: 登录后题单页不重新拉取(进度依赖登录态) → effect 依赖 token
 - ✅ 修复 ESM 运行时坑: vite config 用 __dirname 在 type:module 下为 undefined → import.meta.url
-- ⚠️ 已知: 单包 1MB(antd/react 未拆分, 构建告警) → M6 前加 manualChunks; 40101 由页面捕获, 写操作统一用 handleAuthError 在批次 B 接入
-**commit**: (本次提交)
+- ✅ 构建产物治理: tsc -b 会把 vite.config 生成 .js/.d.ts 并误入库 → 改 tsc --noEmit + 删除生成物; manualChunks 拆分 react/antd/editor
+- ⚠️ 已知: 40101 由页面捕获, 写操作统一用 handleAuthError 在批次 B 接入
+**commit**: a29c9bd(骨架) + 后续构建配置修正
 ---
 
 ## [M4] 2026-11-09 ｜ 管理端统计看板 + 图片上传 + 每日快照（后端 MVP 收尾）
