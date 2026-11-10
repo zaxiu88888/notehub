@@ -1,5 +1,7 @@
 package com.notehub.security;
 
+import com.notehub.mapper.UserMapper;
+import com.notehub.model.entity.User;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -15,7 +17,7 @@ import java.util.List;
 
 /**
  * STOMP 鉴权:
- * - CONNECT: 解析 Authorization(Bearer) / token 原生头, 校验 JWT 并绑定 Principal(userId)
+ * - CONNECT: 解析 Authorization(Bearer) / token 原生头, 校验 JWT + 用户存在且未封禁, 绑定 Principal(userId)
  * - SUBSCRIBE: 只允许 /user/queue/** (个人队列), 防止订阅他人消息
  * - SEND: 本项目不需要客户端上行消息, 一律拒绝
  */
@@ -26,9 +28,11 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtil jwtUtil;
+    private final UserMapper userMapper;
 
-    public StompAuthChannelInterceptor(JwtUtil jwtUtil) {
+    public StompAuthChannelInterceptor(JwtUtil jwtUtil, UserMapper userMapper) {
         this.jwtUtil = jwtUtil;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -40,8 +44,9 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         StompCommand command = accessor.getCommand();
         if (StompCommand.CONNECT.equals(command)) {
             Long userId = jwtUtil.parseUserId(extractToken(accessor));
-            if (userId == null || userId <= 0) {
-                log.debug("[WS] 拒绝未认证连接");
+            User user = userId == null ? null : userMapper.selectById(userId);
+            if (user == null || (user.getIsBanned() != null && user.getIsBanned() == 1)) {
+                log.debug("[WS] 拒绝未认证/已封禁连接: userId={}", userId);
                 throw new MessagingException("WebSocket 连接未认证");
             }
             accessor.setUser(new UsernamePasswordAuthenticationToken(

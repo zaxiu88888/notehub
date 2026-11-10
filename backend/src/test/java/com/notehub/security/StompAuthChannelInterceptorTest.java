@@ -1,5 +1,7 @@
 package com.notehub.security;
 
+import com.notehub.mapper.UserMapper;
+import com.notehub.model.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,13 +22,22 @@ import static org.mockito.Mockito.when;
 class StompAuthChannelInterceptorTest {
 
     private JwtUtil jwtUtil;
+    private UserMapper userMapper;
     private StompAuthChannelInterceptor interceptor;
     private final MessageChannel channel = mock(MessageChannel.class);
 
     @BeforeEach
     void setUp() {
         jwtUtil = mock(JwtUtil.class);
-        interceptor = new StompAuthChannelInterceptor(jwtUtil);
+        userMapper = mock(UserMapper.class);
+        interceptor = new StompAuthChannelInterceptor(jwtUtil, userMapper);
+    }
+
+    private User user(long id, int isBanned) {
+        User user = new User();
+        user.setUserId(id);
+        user.setIsBanned(isBanned);
+        return user;
     }
 
     private record Frame(Message<byte[]> message, StompHeaderAccessor accessor) {
@@ -50,6 +61,7 @@ class StompAuthChannelInterceptorTest {
     @DisplayName("CONNECT: Bearer JWT 有效 → 绑定 Principal(userId)")
     void connectWithValidTokenBindsPrincipal() {
         when(jwtUtil.parseUserId("good-token")).thenReturn(7L);
+        when(userMapper.selectById(7L)).thenReturn(user(7L, 0));
         Frame frame = frame(StompCommand.CONNECT, "Bearer good-token", null);
 
         Message<?> result = interceptor.preSend(frame.message(), channel);
@@ -57,6 +69,22 @@ class StompAuthChannelInterceptorTest {
         assertSame(frame.message(), result);
         assertNotNull(frame.accessor().getUser());
         assertEquals("7", frame.accessor().getUser().getName());
+    }
+
+    @Test
+    @DisplayName("CONNECT: token 有效但用户已封禁/已删除 → 拒绝")
+    void connectBannedOrMissingUserRejected() {
+        when(jwtUtil.parseUserId("banned-token")).thenReturn(8L);
+        when(userMapper.selectById(8L)).thenReturn(user(8L, 1));
+        assertThrows(MessagingException.class,
+                () -> interceptor.preSend(frame(StompCommand.CONNECT, "Bearer banned-token", null).message(),
+                        channel));
+
+        when(jwtUtil.parseUserId("deleted-token")).thenReturn(9L);
+        when(userMapper.selectById(9L)).thenReturn(null);
+        assertThrows(MessagingException.class,
+                () -> interceptor.preSend(frame(StompCommand.CONNECT, "Bearer deleted-token", null).message(),
+                        channel));
     }
 
     @Test
