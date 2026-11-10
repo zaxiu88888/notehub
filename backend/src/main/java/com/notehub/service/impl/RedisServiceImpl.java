@@ -76,6 +76,12 @@ public class RedisServiceImpl implements RedisService {
     }
 
     @Override
+    public long increment(String key) {
+        Long value = stringRedisTemplate.opsForValue().increment(key);
+        return value == null ? 0L : value;
+    }
+
+    @Override
     public void leftPush(String key, String value) {
         redisTemplate.opsForList().leftPush(key, value);
     }

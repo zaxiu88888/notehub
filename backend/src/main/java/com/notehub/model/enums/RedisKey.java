@@ -37,4 +37,9 @@ public final class RedisKey {
     public static String aiSummary(Long noteId) {
         return "ai:summary:" + noteId;
     }
+
+    /** 搜索缓存版本号: 笔记增删改后自增, 旧缓存自然过期 */
+    public static String searchVersion() {
+        return "search:notes:version";
+    }
 }

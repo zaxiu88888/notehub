@@ -16,6 +16,9 @@ public interface RedisService {
 
     void delete(String key);
 
+    /** 原子自增(缓存版本号等), 返回自增后的值 */
+    long increment(String key);
+
     /** 队列左进右出 */
     void leftPush(String key, String value);
 

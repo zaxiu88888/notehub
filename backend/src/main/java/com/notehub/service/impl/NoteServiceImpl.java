@@ -12,11 +12,13 @@ import com.notehub.mapper.QuestionMapper;
 import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.entity.Note;
 import com.notehub.model.entity.Question;
+import com.notehub.model.enums.RedisKey;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.service.AiSummaryService;
 import com.notehub.service.ImageCleanupService;
 import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteService;
+import com.notehub.service.RedisService;
 import com.notehub.service.TagService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,13 +51,14 @@ public class NoteServiceImpl implements NoteService {
     private final NoteDailyStatService noteDailyStatService;
     private final ImageCleanupService imageCleanupService;
     private final AiSummaryService aiSummaryService;
+    private final RedisService redisService;
     private final ApplicationEventPublisher eventPublisher;
 
     public NoteServiceImpl(NoteMapper noteMapper, CommentMapper commentMapper,
                            CollectionNoteMapper collectionNoteMapper, QuestionMapper questionMapper,
                            TagService tagService, NoteDailyStatService noteDailyStatService,
                            ImageCleanupService imageCleanupService, AiSummaryService aiSummaryService,
-                           ApplicationEventPublisher eventPublisher) {
+                           RedisService redisService, ApplicationEventPublisher eventPublisher) {
         this.noteMapper = noteMapper;
         this.commentMapper = commentMapper;
         this.collectionNoteMapper = collectionNoteMapper;
@@ -64,6 +67,7 @@ public class NoteServiceImpl implements NoteService {
         this.noteDailyStatService = noteDailyStatService;
         this.imageCleanupService = imageCleanupService;
         this.aiSummaryService = aiSummaryService;
+        this.redisService = redisService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -105,6 +109,7 @@ public class NoteServiceImpl implements NoteService {
         tagService.syncNoteTags(note.getNoteId(), questionId, tags);
         // 热力图增量(位图已建立时生效, 否则等下次读取时回填)
         eventPublisher.publishEvent(new NoteHeatmapEvent(this, authorId, LocalDate.now(), 1));
+        bumpSearchCacheVersion();
         log.info("[笔记] 发布: noteId={}, author={}, question={}", note.getNoteId(), authorId, questionId);
         return note.getNoteId();
     }
@@ -126,6 +131,7 @@ public class NoteServiceImpl implements NoteService {
         // 正文里被移除的图片: 事务提交后再删, 回滚不会误删文件
         runAfterCommit(() -> imageCleanupService.cleanupRemovedImages(oldContent, content));
         runAfterCommit(() -> aiSummaryService.evict(noteId));
+        bumpSearchCacheVersion();
     }
 
     @Override
@@ -144,6 +150,7 @@ public class NoteServiceImpl implements NoteService {
         // 笔记已删, 事务提交后逐个检查其他引用并清理正文图片
         runAfterCommit(() -> imageCleanupService.cleanupNoteImages(note.getContent()));
         runAfterCommit(() -> aiSummaryService.evict(noteId));
+        bumpSearchCacheVersion();
         LocalDate publishedDay = note.getCreatedAt() == null
                 ? LocalDate.now() : note.getCreatedAt().toLocalDate();
         eventPublisher.publishEvent(new NoteHeatmapEvent(this, note.getAuthorId(), publishedDay, -1));
@@ -196,6 +203,17 @@ public class NoteServiceImpl implements NoteService {
         } else {
             action.run();
         }
+    }
+
+    /** 笔记增删改后推进搜索缓存版本; Redis 故障不影响主流程 */
+    private void bumpSearchCacheVersion() {
+        runAfterCommit(() -> {
+            try {
+                redisService.increment(RedisKey.searchVersion());
+            } catch (Exception e) {
+                log.warn("[搜索] 推进缓存版本失败(旧缓存最多保留 5min): {}", e.getMessage());
+            }
+        });
     }
 
     /** 搜索向量 = 题目标题 + 笔记正文(供 ngram 全文索引) */

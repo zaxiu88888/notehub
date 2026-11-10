@@ -47,6 +47,7 @@ class NoteServiceImplTest {
     private NoteDailyStatService noteDailyStatService;
     private ImageCleanupService imageCleanupService;
     private AiSummaryService aiSummaryService;
+    private RedisService redisService;
     private ApplicationEventPublisher eventPublisher;
     private NoteServiceImpl noteService;
 
@@ -59,10 +60,11 @@ class NoteServiceImplTest {
         noteDailyStatService = mock(NoteDailyStatService.class);
         imageCleanupService = mock(ImageCleanupService.class);
         aiSummaryService = mock(AiSummaryService.class);
+        redisService = mock(RedisService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         noteService = new NoteServiceImpl(noteMapper, mock(CommentMapper.class),
                 mock(CollectionNoteMapper.class), questionMapper, tagService,
-                noteDailyStatService, imageCleanupService, aiSummaryService, eventPublisher);
+                noteDailyStatService, imageCleanupService, aiSummaryService, redisService, eventPublisher);
     }
 
     private Note note(long id, long authorId) {
@@ -136,6 +138,8 @@ class NoteServiceImplTest {
         assertEquals(1, heatmapEvent.delta());
         // 未传标签 → 继承题目标签(syncNoteTags 收到 null)
         verify(tagService).syncNoteTags(100L, 2L, null);
+        // 写笔记后推进搜索缓存版本
+        verify(redisService).increment("search:notes:version");
 
         when(noteMapper.selectByAuthorAndQuestion(7L, 2L)).thenReturn(note(10L, 7L));
         BusinessException e = assertThrows(BusinessException.class,

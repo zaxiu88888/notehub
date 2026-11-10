@@ -121,4 +121,40 @@ class SearchServiceImplTest {
         assertEquals(null, page.getList().get(0).getEmail());
         assertTrue(page.getList().get(0).getUsername().contains("刷题"));
     }
+
+    @Test
+    @DisplayName("缓存命中: IN 查询返回乱序时仍按相关度 ID 顺序输出")
+    void cacheHitRestoresRelevanceOrder() {
+        String json = "{\"ids\":[7,5],\"total\":2}";
+        when(redisService.get(anyString())).thenReturn(json);
+        // 模拟 selectByIds 的 IN 查询按主键返回 [5,7]
+        when(noteMapper.selectByIds(List.of(7L, 5L))).thenReturn(List.of(note(5L), note(7L)));
+        when(noteService.toVOList(anyList(), eq(2L))).thenAnswer(inv -> {
+            List<Note> notes = inv.getArgument(0);
+            return notes.stream().map(n -> vo(n.getNoteId())).toList();
+        });
+
+        PageVO<NoteVO> page = service.searchNotes("哈希表", 1, 10, 2L);
+
+        assertEquals(List.of(7L, 5L), page.getList().stream().map(NoteVO::getNoteId).toList());
+    }
+
+    @Test
+    @DisplayName("缓存键: Java hashCode 相同的不同关键词不得共用缓存")
+    void cacheKeyAvoidsJavaHashCollision() {
+        // gtmllind / wrapbhzi 的 String.hashCode 相同(实测 -2079277761)
+        when(redisService.get(anyString())).thenReturn(null);
+        when(noteMapper.countByKeyword(anyString())).thenReturn(0L);
+
+        service.searchNotes("gtmllind", 1, 10, null);
+        service.searchNotes("wrapbhzi", 1, 10, null);
+
+        org.mockito.ArgumentCaptor<String> captor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(redisService, org.mockito.Mockito.times(2))
+                .set(captor.capture(), anyString(), any(Duration.class));
+        String first = captor.getAllValues().get(0);
+        String second = captor.getAllValues().get(1);
+        assertTrue(first.startsWith("search:notes:v0:"));
+        assertTrue(!first.equals(second), "collision key: " + first);
+    }
 }
