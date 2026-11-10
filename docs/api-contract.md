@@ -163,10 +163,10 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 
 | 方法 | 路径 | 权限 | 说明 |
 |---|---|---|---|
-| GET | `/search/notes?keyword=&page=&pageSize=` | 🌐 | 笔记全文搜索（题目 + 正文，ngram 索引 + Jieba 预处理），按相关度排序；登录时返回 myActions |
+| GET | `/search/notes?keyword=&page=&pageSize=` | 🌐 | 笔记全文搜索（题目 + 正文，ngram 索引 + Jieba 预处理，分词后按布尔短语匹配），按相关度排序；登录时返回 myActions |
 | GET | `/search/users?keyword=&page=&pageSize=` | 🌐 | 用户搜索（昵称/账号模糊），不返回邮箱 |
 
-- 空/纯符号关键词 → 空列表；关键词长度截断 64 字符；结果缓存 5 分钟（版本号 + 关键词 SHA-256 + 分页，仅缓存 ID 与总数）；笔记增删改后版本号自增，旧缓存立即不再命中
+- 空/纯符号关键词 → 空列表；关键词长度截断 64 字符；分词后每个词加引号用 BOOLEAN MODE 短语匹配（词间 OR），过滤 ngram 跨词 bigram 低分噪声；结果缓存 5 分钟（版本号 + 关键词 SHA-256 + 分页，仅缓存 ID 与总数）；笔记增删改后版本号自增，旧缓存立即不再命中
 - 搜索结果按相关度排序（ID 批量查询后仍按相关度顺序还原）
 - 前端入口：顶栏搜索框 → `/search?keyword=`
 

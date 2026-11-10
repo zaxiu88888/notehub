@@ -225,7 +225,7 @@ frontend/src/
 ```
 写: 笔记创建/编辑 → search_vector = 题目标题 + 正文(纯文本)
 库: notes.search_vector + FULLTEXT INDEX ... WITH PARSER ngram
-读: 关键词 → SearchUtils(Jieba 分词/去 Markdown 符号/去重/截断) → MATCH ... AGAINST(... IN NATURAL LANGUAGE MODE)
+读: 关键词 → SearchUtils(Jieba 分词/去 Markdown 符号/去重/截断) → 每词加引号 → MATCH ... AGAINST('"词1" "词2"' IN BOOLEAN MODE)
 缓存: Redis "search:notes:v{version}:{sha256(keyword)}:{page}:{size}" → {ids,total}, TTL 5min
       笔记增删改 afterCommit 自增 "search:notes:version", 旧键自然过期
       缓存内容与用户无关; VO 按相关度 ID 顺序还原后批量补 myActions(不缓存个性化字段)
@@ -233,6 +233,7 @@ frontend/src/
 ```
 
 > 说明: ngram 负责中文 bigram 索引, Jieba 负责查询侧分词与噪声清理, 两者互补;
+> 查询侧按分词加引号做短语匹配, 避免只共享单个 bigram 的跨词低分命中;
 > 写入路径已维护向量, 历史数据由 `db/migration/I1_search.sql` 回填。
 
 ## 5.7 数据可视化设计（I2）

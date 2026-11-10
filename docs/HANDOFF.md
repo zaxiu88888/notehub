@@ -26,20 +26,20 @@
 | I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 513ece8 |
 | I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ ecd8a66 |
 | I6 拓展（AI 题解总结、每日打卡 streak） | ✅ ce23dbd + d2766e2 |
-| S5 全量复测（I1–I6 专项 191 项 + 44 项回归 + 浏览器 E2E） | ✅ 2026-11-10 |
+| S5 全量复测（I1–I6 专项 192 项 + 44 项回归 + 浏览器 E2E） | ✅ 2026-11-10 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**206/206**
-- 前端 `npm test`：**39/39**；`npm run build` 通过
-- I1–I6 真实环境专项：**191/191**（I1 33 / I2 40 / I3 21 / I4 28 / I5 37 / I6 32）
+- 后端 `mvn test`：**207/207**
+- 前端 `npm test`：**41/41**；`npm run build` 通过
+- I1–I6 真实环境专项：**192/192**（I1 34 / I2 40 / I3 21 / I4 28 / I5 37 / I6 32）
 - 历史 S3 端到端回归：**44/44**（auth 切面修改后已复跑）
 - 浏览器 E2E：用户端全链路 + 管理端 5 页面通过；发现并修复评论数不刷新
-- 本轮修复见 `docs/project-log.md [RETEST]` 与 `docs/test-report.md §9`
+- 本轮修复见 `docs/project-log.md` [RETEST]/[RETEST-2] 与 `docs/test-report.md §9`（含 §9.7 遗留收口）
 
 ## 下一步
 - 路线图 I1–I6 已全部完成，S5 全量复测通过
-- 收尾建议：公开前检查清单、README 截图、补真实 AI Key 联调（模型限流 5/min）
-- 可选优化：列表页评论入口接线（首页/搜索/他人主页/收藏夹，P3）、搜索低分 bigram 过滤
+- 收尾建议：公开前检查清单、README 截图、真实第三方 AI Key 联调（协议/限流/降级已用本地 mock 验证）
+- 已收口：列表页评论入口已接线；搜索改布尔短语过滤 bigram 噪声；每周孤儿清理已 cron 实触发验证
 - 已知限制见 `docs/test-report.md §9.5`
 
 ## 关键决策（不要推翻，除非用户要求）
@@ -66,7 +66,7 @@
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（206，无需 DB/Redis）；`npm test`（39）/ `npm run build`
+- 测试：`mvn test`（207，无需 DB/Redis）；`npm test`（41）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
 - I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`
