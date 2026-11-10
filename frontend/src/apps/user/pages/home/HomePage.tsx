@@ -23,6 +23,7 @@ import { getNotes } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
 import { getTags } from '@/domain/tag/api';
 import RankListCard from '@/domain/note/components/RankListCard';
+import NoteCommentsDrawer from '@/domain/note/components/NoteCommentsDrawer';
 import { ApiError } from '@/request/http';
 import dayjs from 'dayjs';
 
@@ -55,6 +56,7 @@ export default function HomePage() {
   const [total, setTotal] = useState(0);
   const [notes, setNotes] = useState<NoteVO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [commentNoteId, setCommentNoteId] = useState<number | null>(null);
 
   useEffect(() => {
     getCategoryTree()
@@ -85,13 +87,18 @@ export default function HomePage() {
     loadQuestions();
   }, [loadQuestions]);
 
-  useEffect(() => {
-    getNotes({ page: 1, pageSize: 8, sort: 'latest', tag: noteTag })
-      .then((data) => setNotes(data.list))
-      .catch(() => {
-        /* 未登录也可看笔记流, 失败静默(题目区已有错误提示) */
-      });
+  const loadNotes = useCallback(async () => {
+    try {
+      const data = await getNotes({ page: 1, pageSize: 8, sort: 'latest', tag: noteTag });
+      setNotes(data.list);
+    } catch {
+      /* 未登录也可看笔记流, 失败静默(题目区已有错误提示) */
+    }
   }, [noteTag]);
+
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
 
   const handleFilterChange = (nextCategory?: number, nextDifficulty?: number) => {
     setCategoryId(nextCategory);
@@ -100,7 +107,8 @@ export default function HomePage() {
   };
 
   return (
-    <Row gutter={[24, 24]}>
+    <>
+      <Row gutter={[24, 24]}>
       <Col xs={24} lg={15}>
         <Card
           title={
@@ -254,9 +262,15 @@ export default function HomePage() {
                           <span>
                             <LikeOutlined /> {note.likeCount}
                           </span>
-                          <span>
-                            <CommentOutlined /> {note.commentCount}
-                          </span>
+                          <Button
+                            type="text"
+                            size="small"
+                            style={{ padding: 0, height: 'auto', color: 'inherit', fontSize: 12 }}
+                            icon={<CommentOutlined />}
+                            onClick={() => setCommentNoteId(note.noteId)}
+                          >
+                            {note.commentCount}
+                          </Button>
                           <span>{dayjs(note.createdAt).format('MM-DD HH:mm')}</span>
                         </Space>
                       </Space>
@@ -277,5 +291,11 @@ export default function HomePage() {
         </Space>
       </Col>
     </Row>
+      <NoteCommentsDrawer
+        noteId={commentNoteId}
+        onClose={() => setCommentNoteId(null)}
+        onCountChange={loadNotes}
+      />
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { App as AntApp, ConfigProvider } from 'antd';
@@ -22,6 +23,13 @@ vi.mock('@/domain/note/api', () => ({
 vi.mock('@/domain/tag/api', () => ({
   getTags: vi.fn(),
 }));
+vi.mock('@/domain/note/components/CommentsPanel', async () => {
+  const React = await import('react');
+  return {
+    default: ({ noteId }: { noteId: number }) =>
+      React.createElement('div', { 'data-testid': 'comments-panel' }, `评论面板 ${noteId}`),
+  };
+});
 
 import { getCategoryTree, getQuestions } from '@/domain/question/api';
 import { getNoteRanklist, getNotes } from '@/domain/note/api';
@@ -113,5 +121,14 @@ describe('HomePage', () => {
     await waitFor(() =>
       expect(getQuestions).toHaveBeenCalledWith(expect.objectContaining({ tag: '哈希表' })),
     );
+  });
+
+  it('点击笔记评论数打开评论抽屉', async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(await screen.findByRole('button', { name: /comment/i }));
+
+    expect(await screen.findByTestId('comments-panel')).toHaveTextContent('评论面板 1');
   });
 });

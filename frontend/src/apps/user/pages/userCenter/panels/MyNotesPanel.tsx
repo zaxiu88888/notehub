@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { downloadNotes, getNotes } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
 import NoteCard from '@/domain/note/components/NoteCard';
+import NoteCommentsDrawer from '@/domain/note/components/NoteCommentsDrawer';
 import { useAppSelector } from '@/store/hooks';
 
 const PAGE_SIZE = 5;
@@ -18,6 +19,7 @@ export default function MyNotesPanel() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [commentNoteId, setCommentNoteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -77,7 +79,13 @@ export default function MyNotesPanel() {
         </Button>
       </div>
       {notes.map((note) => (
-        <NoteCard key={note.noteId} note={note} collapsible onChanged={load} />
+        <NoteCard
+          key={note.noteId}
+          note={note}
+          collapsible
+          onChanged={load}
+          onOpenComments={setCommentNoteId}
+        />
       ))}
       <div style={{ textAlign: 'right' }}>
         <Pagination
@@ -89,6 +97,11 @@ export default function MyNotesPanel() {
           hideOnSinglePage
         />
       </div>
+      <NoteCommentsDrawer
+        noteId={commentNoteId}
+        onClose={() => setCommentNoteId(null)}
+        onCountChange={load}
+      />
     </>
   );
 }

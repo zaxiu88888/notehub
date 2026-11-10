@@ -13,6 +13,13 @@ vi.mock('@/domain/search/api', () => ({
   searchNotes: vi.fn(),
   searchUsers: vi.fn(),
 }));
+vi.mock('@/domain/note/components/CommentsPanel', async () => {
+  const React = await import('react');
+  return {
+    default: ({ noteId }: { noteId: number }) =>
+      React.createElement('div', { 'data-testid': 'comments-panel' }, `评论面板 ${noteId}`),
+  };
+});
 
 import { searchNotes, searchUsers } from '@/domain/search/api';
 
@@ -103,5 +110,14 @@ describe('SearchPage', () => {
     renderSearch('/search');
     expect(screen.getByText(/在顶部搜索框输入关键词/)).toBeInTheDocument();
     expect(searchNotes).not.toHaveBeenCalled();
+  });
+
+  it('点击评论按钮打开评论抽屉', async () => {
+    const user = userEvent.setup();
+    renderSearch('/search?keyword=哈希表');
+
+    await user.click(await screen.findByRole('button', { name: /comment/i }));
+
+    expect(await screen.findByTestId('comments-panel')).toHaveTextContent('评论面板 1');
   });
 });

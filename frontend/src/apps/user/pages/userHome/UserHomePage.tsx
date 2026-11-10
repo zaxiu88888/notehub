@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { App, Avatar, Card, Empty, Result, Skeleton, Space, Tag, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { getNotes } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
 import { ApiError } from '@/request/http';
 import NoteCard from '@/domain/note/components/NoteCard';
+import NoteCommentsDrawer from '@/domain/note/components/NoteCommentsDrawer';
 
 /** 他人主页: 公开资料 + TA 的笔记 */
 export default function UserHomePage() {
@@ -19,28 +20,33 @@ export default function UserHomePage() {
   const [notes, setNotes] = useState<NoteVO[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [commentNoteId, setCommentNoteId] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!Number.isFinite(userId)) {
       setNotFound(true);
       setLoading(false);
       return;
     }
     setLoading(true);
-    Promise.all([
-      getPublicProfile(userId),
-      getNotes({ authorId: userId, page: 1, pageSize: 20 }),
-    ])
-      .then(([user, notePage]) => {
-        setProfile(user);
-        setNotes(notePage.list);
-      })
-      .catch((e) => {
-        if (e instanceof ApiError && e.code === 40401) setNotFound(true);
-        else message.error('加载失败');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [user, notePage] = await Promise.all([
+        getPublicProfile(userId),
+        getNotes({ authorId: userId, page: 1, pageSize: 20 }),
+      ]);
+      setProfile(user);
+      setNotes(notePage.list);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 40401) setNotFound(true);
+      else message.error('加载失败');
+    } finally {
+      setLoading(false);
+    }
   }, [userId, message]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) return <Card><Skeleton active avatar paragraph={{ rows: 6 }} /></Card>;
   if (notFound || !profile) {
@@ -86,8 +92,20 @@ export default function UserHomePage() {
           <Empty description="还没有写过笔记" />
         </Card>
       ) : (
-        notes.map((note) => <NoteCard key={note.noteId} note={note} collapsible />)
+        notes.map((note) => (
+          <NoteCard
+            key={note.noteId}
+            note={note}
+            collapsible
+            onOpenComments={setCommentNoteId}
+          />
+        ))
       )}
+      <NoteCommentsDrawer
+        noteId={commentNoteId}
+        onClose={() => setCommentNoteId(null)}
+        onCountChange={load}
+      />
     </>
   );
 }

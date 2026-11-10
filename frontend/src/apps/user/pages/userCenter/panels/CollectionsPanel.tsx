@@ -19,6 +19,7 @@ import {
 } from '@/domain/note/api';
 import type { CollectionVO, NoteVO } from '@/domain/note/types';
 import NoteCard from '@/domain/note/components/NoteCard';
+import NoteCommentsDrawer from '@/domain/note/components/NoteCommentsDrawer';
 import { handleAuthError } from '@/request/http';
 
 /** 我的收藏: 左收藏夹列表, 右夹内笔记 */
@@ -28,6 +29,7 @@ export default function CollectionsPanel() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [notes, setNotes] = useState<NoteVO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [commentNoteId, setCommentNoteId] = useState<number | null>(null);
 
   const loadCollections = useCallback(async () => {
     try {
@@ -157,7 +159,12 @@ export default function CollectionsPanel() {
         ) : (
           notes.map((note) => (
             <div key={note.noteId} style={{ position: 'relative' }}>
-              <NoteCard note={note} collapsible onChanged={() => activeId != null && loadNotes(activeId)} />
+              <NoteCard
+                note={note}
+                collapsible
+                onChanged={() => activeId != null && loadNotes(activeId)}
+                onOpenComments={setCommentNoteId}
+              />
               <Button
                 size="small"
                 type="text"
@@ -171,6 +178,11 @@ export default function CollectionsPanel() {
           ))
         )}
       </div>
+      <NoteCommentsDrawer
+        noteId={commentNoteId}
+        onClose={() => setCommentNoteId(null)}
+        onCountChange={() => activeId != null && loadNotes(activeId)}
+      />
     </div>
   );
 }

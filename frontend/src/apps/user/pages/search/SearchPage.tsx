@@ -18,6 +18,7 @@ import { searchNotes, searchUsers } from '@/domain/search/api';
 import type { NoteVO } from '@/domain/note/types';
 import type { UserVO } from '@/domain/user/types';
 import NoteCard from '@/domain/note/components/NoteCard';
+import NoteCommentsDrawer from '@/domain/note/components/NoteCommentsDrawer';
 import { ApiError } from '@/request/http';
 
 const PAGE_SIZE = 10;
@@ -34,6 +35,7 @@ export default function SearchPage() {
   const [users, setUsers] = useState<UserVO[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [commentNoteId, setCommentNoteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!keyword) {
@@ -73,7 +75,8 @@ export default function SearchPage() {
   };
 
   return (
-    <Card title={keyword ? `搜索「${keyword}」` : '搜索'}>
+    <>
+      <Card title={keyword ? `搜索「${keyword}」` : '搜索'}>
       {!keyword ? (
         <Empty description="在顶部搜索框输入关键词，搜索笔记或用户" />
       ) : (
@@ -91,7 +94,12 @@ export default function SearchPage() {
               ) : (
                 <>
                   {notes.map((note) => (
-                    <NoteCard key={note.noteId} note={note} collapsible />
+                    <NoteCard
+                      key={note.noteId}
+                      note={note}
+                      collapsible
+                      onOpenComments={setCommentNoteId}
+                    />
                   ))}
                   <div style={{ textAlign: 'right' }}>
                     <Pagination
@@ -155,5 +163,11 @@ export default function SearchPage() {
         />
       )}
     </Card>
+      <NoteCommentsDrawer
+        noteId={commentNoteId}
+        onClose={() => setCommentNoteId(null)}
+        onCountChange={load}
+      />
+    </>
   );
 }

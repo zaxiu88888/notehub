@@ -3,7 +3,6 @@ import {
   App,
   Button,
   Card,
-  Drawer,
   Empty,
   Result,
   Skeleton,
@@ -23,8 +22,8 @@ import { useAppSelector } from '@/store/hooks';
 import DifficultyTag from '@/base/components/DifficultyTag';
 import MarkdownView from '@/base/components/MarkdownView';
 import NoteCard from '@/domain/note/components/NoteCard';
+import NoteCommentsDrawer from '@/domain/note/components/NoteCommentsDrawer';
 import NoteEditorModal from '@/domain/note/components/NoteEditorModal';
-import CommentsPanel from '@/domain/note/components/CommentsPanel';
 
 /** 题目详情: 题干 + 该题全部笔记 + 写/改我的笔记 + 评论抽屉 */
 export default function QuestionPage() {
@@ -205,17 +204,11 @@ export default function QuestionPage() {
         onSaved={load}
       />
 
-      <Drawer
-        open={commentNoteId != null}
+      <NoteCommentsDrawer
+        noteId={commentNoteId}
         onClose={() => setCommentNoteId(null)}
-        title="评论"
-        width={560}
-        destroyOnHidden
-      >
-        {commentNoteId != null && (
-          <CommentsPanel noteId={commentNoteId} onCountChange={handleCommentCountChange} />
-        )}
-      </Drawer>
+        onCountChange={handleCommentCountChange}
+      />
     </>
   );
 }
