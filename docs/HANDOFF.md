@@ -26,12 +26,12 @@
 | I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 513ece8 |
 | I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ ecd8a66 |
 | I6 拓展（AI 题解总结、每日打卡 streak） | ✅ ce23dbd + d2766e2 |
-| S5 全量复测（I1–I6 专项 192 项 + 44 项回归 + 多实例 11 项 + 浏览器 E2E） | ✅ 2026-11-10 |
+| S5 全量复测（I1–I6 专项 194 项 + 44 项回归 + 多实例 11 项 + 浏览器 E2E） | ✅ 2026-11-10 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**208/208**
+- 后端 `mvn test`：**212/212**
 - 前端 `npm test`：**41/41**；`npm run build` 通过
-- I1–I6 真实环境专项：**192/192**（I1 34 / I2 40 / I3 21 / I4 28 / I5 37 / I6 32）
+- I1–I6 真实环境专项：**194/194**（I1 34 / I2 40 / I3 23 / I4 28 / I5 37 / I6 32）
 - 历史 S3 端到端回归：**44/44**（auth 切面修改后已复跑）
 - AI：本地 mock **18/18** + DeepSeek `deepseek-chat` 真实联调 **13/13**（Key 仅环境变量，未入库）
 - 浏览器 E2E：用户端全链路 + 管理端 5 页面通过；发现并修复评论数不刷新
@@ -57,7 +57,7 @@
 10. I5：多级缓存版本号存 Redis `cache:version:{domain}`，多实例失效即时生效（旧 L1 条目 30s 自然淘汰）；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
 11. I6：AI 默认关闭（LocalSummarizer 本地降级），Key 只走环境变量；仅模型生成消耗 5/min（缓存/本地摘要不限流）；同笔记并发合并；打卡为显式每日一次，status 含近 7 天轨迹
 12. S5 复测：搜索缓存键 = 版本号 + SHA-256（弃 String.hashCode）；笔记增删改 afterCommit 自增 Redis 版本号立即失效；搜索结果按 ID 顺序还原相关度
-13. S5 复测：STOMP CONNECT 除 JWT 外查 users 表，封禁/已删除用户拒绝新连接；鉴权切面统一抛 BusinessException（不再直接返回 ApiResponse，避免 ResponseEntity 接口 500）
+13. S5 复测：STOMP CONNECT 除 JWT 外查 users 表拒绝封禁/已删除用户；封禁时 WsSessionRegistry 主动关闭其全部已有会话，推送前再查封禁；鉴权切面统一抛 BusinessException（不再直接返回 ApiResponse，避免 ResponseEntity 接口 500）
 
 ## 工作纪律（每步必须）
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
@@ -67,13 +67,13 @@
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（208，无需 DB/Redis）；`npm test`（41）/ `npm run build`
+- 测试：`mvn test`（212，无需 DB/Redis）；`npm test`（41）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
 - I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`
 - AI 真模型（DeepSeek 实测）：`AI_SUMMARY_API_KEY=<key> SPRING_APPLICATION_JSON='{"ai":{"summary":{"enabled":true,"base-url":"https://api.deepseek.com/v1","model":"deepseek-chat"}}}' mvn spring-boot:run`；Key 只放环境变量，勿写入仓库
 - 本机迁移：`I4_tags.sql`、`I5_interaction_stats.sql`、`I6_checkins.sql` 均已执行
-- WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；CONNECT 校验 JWT+用户未封禁；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
+- WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；CONNECT 校验 JWT+用户未封禁，封禁时断开已有会话；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
 - 搜索缓存：`search:notes:v{version}:{sha256}:{page}:{size}`；笔记增删改后版本号自增（`search:notes:version`），旧缓存 5min 自然过期
 - **dev 邮件联调**：mail.verify-code.enabled=false 时 GET /api/email/verify-code 返回 devCode；Redis 不可用时邮件/注册不可用
 - I2 接口：`/api/notes/heatmap`、`/api/notes/ranklist`、`/api/notes/top3count`、`/api/notes/download` —— 契约见 docs/api-contract.md §14

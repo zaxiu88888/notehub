@@ -262,6 +262,8 @@ frontend/src/
 推送: SimpMessagingTemplate.convertAndSendToUser(userId, "/queue/unread", counts)
       载荷 {total, like, comment, system}, 与 HTTP 未读接口同构
 触发: 新消息落库(InteractionEventListener) / 已读 / 删除(MessageController)
+封禁: WsSessionRegistry 登记底层 WebSocketSession + CONNECT Principal→userId(多标签页);
+      管理员封禁时 close(1008) 全部已有会话; 推送前再查 users.is_banned 兜底
 前端: @stomp/stompjs, 5s 自动重连; connect/重连成功后 HTTP 补拉一次
       Redux notificationSlice 统一维护角标(布局/消息页共用)
 ```
@@ -336,6 +338,6 @@ AI 总结: POST /notes/{id}/ai-summary (登录)
 - SQL 全参数化（MyBatis #{}），无拼接
 - 上传：仅图片后缀白名单 + 大小限制 5MB，文件名 UUID 重写，存本地 uploads/ 经 /images/** 访问
 - CORS 白名单 `http://localhost:5173`
-- WebSocket：CONNECT 帧校验 JWT 且用户存在未封禁；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`
+- WebSocket：CONNECT 帧校验 JWT 且用户存在未封禁；封禁时主动关闭已有会话；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`
 - 限流：登录/注册/搜索/发笔记/评论/点赞/上传/AI 总结按用户或 IP 滑动窗口限流；Redis 故障 fail-open
 - AI：API Key 只从环境变量读取；默认关闭；调用失败自动降级本地摘要
