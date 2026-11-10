@@ -7,19 +7,19 @@
     <insert id="adjustLike">
         INSERT INTO note_daily_stats (note_id, stat_date, like_count)
         VALUES (#{noteId}, #{statDate}, GREATEST(#{delta}, 0))
-        ON DUPLICATE KEY UPDATE like_count = GREATEST(like_count + #{delta}, 0)
+        ON DUPLICATE KEY UPDATE like_count = GREATEST(CAST(like_count AS SIGNED) + #{delta}, 0)
     </insert>
 
     <insert id="adjustComment">
         INSERT INTO note_daily_stats (note_id, stat_date, comment_count)
         VALUES (#{noteId}, #{statDate}, GREATEST(#{delta}, 0))
-        ON DUPLICATE KEY UPDATE comment_count = GREATEST(comment_count + #{delta}, 0)
+        ON DUPLICATE KEY UPDATE comment_count = GREATEST(CAST(comment_count AS SIGNED) + #{delta}, 0)
     </insert>
 
     <insert id="adjustCollect">
         INSERT INTO note_daily_stats (note_id, stat_date, collect_count)
         VALUES (#{noteId}, #{statDate}, GREATEST(#{delta}, 0))
-        ON DUPLICATE KEY UPDATE collect_count = GREATEST(collect_count + #{delta}, 0)
+        ON DUPLICATE KEY UPDATE collect_count = GREATEST(CAST(collect_count AS SIGNED) + #{delta}, 0)
     </insert>
 
     <select id="selectSince" resultType="com.notehub.model.entity.NoteDailyStat">

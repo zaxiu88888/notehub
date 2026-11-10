@@ -95,19 +95,19 @@
     <!-- 原子计数: GREATEST 防 0 下穿(取消点赞在 0 时保持 0) -->
     <update id="adjustLikeCount">
         UPDATE notes
-        SET like_count = GREATEST(like_count + #{delta}, 0), updated_at = CURRENT_TIMESTAMP
+        SET like_count = GREATEST(CAST(like_count AS SIGNED) + #{delta}, 0), updated_at = CURRENT_TIMESTAMP
         WHERE note_id = #{noteId}
     </update>
 
     <update id="adjustCommentCount">
         UPDATE notes
-        SET comment_count = GREATEST(comment_count + #{delta}, 0), updated_at = CURRENT_TIMESTAMP
+        SET comment_count = GREATEST(CAST(comment_count AS SIGNED) + #{delta}, 0), updated_at = CURRENT_TIMESTAMP
         WHERE note_id = #{noteId}
     </update>
 
     <update id="adjustCollectCount">
         UPDATE notes
-        SET collect_count = GREATEST(collect_count + #{delta}, 0), updated_at = CURRENT_TIMESTAMP
+        SET collect_count = GREATEST(CAST(collect_count AS SIGNED) + #{delta}, 0), updated_at = CURRENT_TIMESTAMP
         WHERE note_id = #{noteId}
     </update>
 

@@ -189,17 +189,21 @@ class NoteInteractionServiceImplTest {
     }
 
     @Test
-    @DisplayName("删父评论级联: 回复一并软删, commentCount 按 1+回复数 递减")
+    @DisplayName("删父评论级联: 回复一并软删, 笔记计数按总条数、统计按各自发生日回退")
     void deleteParentCascadesReplies() {
+        Comment replyToday = comment(401L, 10L, 8L, 300L);
+        Comment replyYesterday = comment(402L, 10L, 9L, 300L);
+        replyYesterday.setCreatedAt(DAY.minusDays(1).atStartOfDay());
         when(commentMapper.selectById(300L)).thenReturn(comment(300L, 10L, 7L, null));
         when(commentMapper.softDelete(300L, 7L)).thenReturn(1);
-        when(commentMapper.countActiveReplies(300L)).thenReturn(2L);
+        when(commentMapper.selectActiveReplies(300L)).thenReturn(java.util.List.of(replyToday, replyYesterday));
 
         service.deleteComment(300L, 7L);
 
         verify(commentMapper).softDeleteReplies(300L);
         verify(noteMapper).adjustCommentCount(10L, -3); // 1 条父 + 2 条回复
-        verify(noteDailyStatService).recordComment(10L, DAY, -3);
+        verify(noteDailyStatService).recordComment(10L, DAY, -2); // 父 + 当日回复
+        verify(noteDailyStatService).recordComment(10L, DAY.minusDays(1), -1); // 昨日回复
     }
 
     @Test

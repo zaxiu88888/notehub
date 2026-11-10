@@ -67,19 +67,23 @@
         WHERE parent_id = #{parentId} AND is_deleted = 0
     </update>
 
-    <select id="countActiveReplies" resultType="long">
-        SELECT COUNT(*) FROM comments WHERE parent_id = #{parentId} AND is_deleted = 0
+    <select id="selectActiveReplies" resultType="com.notehub.model.entity.Comment">
+        SELECT comment_id, note_id, author_id, parent_id, reply_to_id, content,
+               like_count, reply_count, is_deleted, created_at, updated_at
+        FROM comments
+        WHERE parent_id = #{parentId} AND is_deleted = 0
+        ORDER BY comment_id
     </select>
 
     <update id="adjustReplyCount">
         UPDATE comments
-        SET reply_count = GREATEST(reply_count + #{delta}, 0)
+        SET reply_count = GREATEST(CAST(reply_count AS SIGNED) + #{delta}, 0)
         WHERE comment_id = #{commentId}
     </update>
 
     <update id="adjustLikeCount">
         UPDATE comments
-        SET like_count = GREATEST(like_count + #{delta}, 0)
+        SET like_count = GREATEST(CAST(like_count AS SIGNED) + #{delta}, 0)
         WHERE comment_id = #{commentId}
     </update>
 

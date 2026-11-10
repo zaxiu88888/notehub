@@ -34,8 +34,8 @@ public interface CommentMapper {
     /** 级联软删: 父评论删除时把其下回复一并置删, 返回影响行数 */
     int softDeleteReplies(@Param("parentId") Long parentId);
 
-    /** 父评论下仍存活的回复数(用于计数递减) */
-    long countActiveReplies(@Param("parentId") Long parentId);
+    /** 父评论下仍存活的回复(取创建日用于统计按发生日回退) */
+    List<Comment> selectActiveReplies(@Param("parentId") Long parentId);
 
     /** 原子回复计数 */
     int adjustReplyCount(@Param("commentId") Long commentId, @Param("delta") int delta);

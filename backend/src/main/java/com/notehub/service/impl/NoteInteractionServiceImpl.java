@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 笔记互动: 原子计数 + 唯一约束防重 + 事件驱动消息(自赞自评不通知)
@@ -148,15 +151,23 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
             throw BusinessException.of(ErrorCode.BAD_PARAM, "评论已删除");
         }
         // 级联: 顶层评论删除时, 其楼中楼一并软删(契约 §8), 计数按实际删除条数递减
-        long activeReplies = commentMapper.countActiveReplies(commentId);
-        if (activeReplies > 0) {
+        List<Comment> activeReplies = commentMapper.selectActiveReplies(commentId);
+        if (!activeReplies.isEmpty()) {
             commentMapper.softDeleteReplies(commentId);
         }
-        noteMapper.adjustCommentCount(comment.getNoteId(), (int) -(1 + activeReplies));
-        // 按评论发生日回退, 避免删旧评论时把今天的统计减成负
-        noteDailyStatService.recordComment(comment.getNoteId(),
-                comment.getCreatedAt() == null ? LocalDate.now() : comment.getCreatedAt().toLocalDate(),
-                (int) -(1 + activeReplies));
+        noteMapper.adjustCommentCount(comment.getNoteId(), -(1 + activeReplies.size()));
+        // 按各评论的发生日回退(父评论与回复可能跨天), 避免把负值记到操作当天
+        LocalDate rootDay = comment.getCreatedAt() == null
+                ? LocalDate.now() : comment.getCreatedAt().toLocalDate();
+        Map<LocalDate, Integer> commentDeltaByDay = new HashMap<>();
+        commentDeltaByDay.merge(rootDay, -1, Integer::sum);
+        for (Comment reply : activeReplies) {
+            LocalDate replyDay = reply.getCreatedAt() == null
+                    ? LocalDate.now() : reply.getCreatedAt().toLocalDate();
+            commentDeltaByDay.merge(replyDay, -1, Integer::sum);
+        }
+        commentDeltaByDay.forEach((day, delta) ->
+                noteDailyStatService.recordComment(comment.getNoteId(), day, delta));
         if (comment.getParentId() != null) {
             commentMapper.adjustReplyCount(comment.getParentId(), -1);
         }
