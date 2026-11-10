@@ -32,4 +32,10 @@ public interface RedisService {
      * 溢出饱和(SAT), 不会因取消笔记而回绕成 255
      */
     boolean bitFieldIncrIfPresent(String key, long bitOffset, long delta);
+
+    /**
+     * 原子自增并在首次写入时设置 TTL(限流固定窗口);
+     * 返回自增后的计数
+     */
+    long incrementWithTtl(String key, Duration ttl);
 }

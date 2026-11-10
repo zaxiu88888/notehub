@@ -1,6 +1,7 @@
 package com.notehub.controller;
 
 import com.notehub.common.ApiResponse;
+import com.notehub.common.RateLimit;
 import com.notehub.model.vo.upload.ImageVO;
 import com.notehub.security.NeedLogin;
 import com.notehub.service.UploadService;
@@ -25,6 +26,7 @@ public class UploadController {
 
     @PostMapping("/upload/image")
     @NeedLogin
+    @RateLimit(key = "upload", limit = 20)
     public ApiResponse<ImageVO> uploadImage(@RequestPart("file") MultipartFile file) {
         return ApiResponse.ok(new ImageVO(uploadService.saveImage(file)));
     }

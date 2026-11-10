@@ -2,16 +2,19 @@ package com.notehub.controller;
 
 import com.notehub.common.ApiResponse;
 import com.notehub.common.PageVO;
+import com.notehub.common.RateLimit;
 import com.notehub.common.RequestContext;
 import com.notehub.model.dto.note.NoteContentBody;
 import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.dto.note.NoteUpdateBody;
 import com.notehub.model.vo.note.HeatmapVO;
+import com.notehub.model.vo.note.NoteDailyStatVO;
 import com.notehub.model.vo.note.NoteStatsVO;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.model.vo.note.RankNoteVO;
 import com.notehub.security.NeedLogin;
 import com.notehub.service.NoteAnalyticsService;
+import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -45,12 +48,15 @@ public class NoteController {
 
     private final NoteService noteService;
     private final NoteAnalyticsService analyticsService;
+    private final NoteDailyStatService noteDailyStatService;
     private final RequestContext requestContext;
 
     public NoteController(NoteService noteService, NoteAnalyticsService analyticsService,
+                          NoteDailyStatService noteDailyStatService,
                           RequestContext requestContext) {
         this.noteService = noteService;
         this.analyticsService = analyticsService;
+        this.noteDailyStatService = noteDailyStatService;
         this.requestContext = requestContext;
     }
 
@@ -68,6 +74,7 @@ public class NoteController {
 
     @PostMapping("/notes")
     @NeedLogin
+    @RateLimit(key = "note:create", limit = 10)
     public ApiResponse<Map<String, Long>> create(@Valid @RequestBody NoteContentBody body) {
         Long noteId = noteService.createNote(requestContext.requireUserId(),
                 body.getQuestionId(), body.getContent(), body.getTags());
@@ -76,6 +83,7 @@ public class NoteController {
 
     @PatchMapping("/notes/{noteId}")
     @NeedLogin
+    @RateLimit(key = "note:update", limit = 30)
     public ApiResponse<Void> update(@PathVariable Long noteId,
                                     @Valid @RequestBody NoteUpdateBody body) {
         noteService.updateNote(noteId, requestContext.requireUserId(),
@@ -115,6 +123,14 @@ public class NoteController {
             @RequestParam(defaultValue = "week") String period,
             @RequestParam(required = false) Integer limit) {
         return ApiResponse.ok(analyticsService.getRanklist(period, limit));
+    }
+
+    /** 笔记近 N 天互动趋势(每日点赞/评论/收藏, 主键去重) */
+    @GetMapping("/notes/{noteId}/stats")
+    public ApiResponse<List<NoteDailyStatVO>> dailyStats(
+            @PathVariable Long noteId,
+            @RequestParam(defaultValue = "7") Integer days) {
+        return ApiResponse.ok(noteDailyStatService.recent(noteId, days));
     }
 
     /** 个人数据卡片: 笔记/获赞/连续提交等 */

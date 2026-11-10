@@ -116,4 +116,9 @@
         WHERE username LIKE CONCAT('%', #{keyword}, '%')
            OR account LIKE CONCAT('%', #{keyword}, '%')
     </select>
+
+    <!-- I5 上传清理: 旧头像是否仍被引用 -->
+    <select id="countByAvatarUrl" resultType="long">
+        SELECT COUNT(*) FROM users WHERE avatar_url = #{url}
+    </select>
 </mapper>

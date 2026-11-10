@@ -13,12 +13,16 @@ import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.entity.Note;
 import com.notehub.model.entity.Question;
 import com.notehub.model.vo.note.NoteVO;
+import com.notehub.service.ImageCleanupService;
+import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteService;
 import com.notehub.service.TagService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -41,16 +45,22 @@ public class NoteServiceImpl implements NoteService {
     private final CollectionNoteMapper collectionNoteMapper;
     private final QuestionMapper questionMapper;
     private final TagService tagService;
+    private final NoteDailyStatService noteDailyStatService;
+    private final ImageCleanupService imageCleanupService;
     private final ApplicationEventPublisher eventPublisher;
 
     public NoteServiceImpl(NoteMapper noteMapper, CommentMapper commentMapper,
                            CollectionNoteMapper collectionNoteMapper, QuestionMapper questionMapper,
-                           TagService tagService, ApplicationEventPublisher eventPublisher) {
+                           TagService tagService, NoteDailyStatService noteDailyStatService,
+                           ImageCleanupService imageCleanupService,
+                           ApplicationEventPublisher eventPublisher) {
         this.noteMapper = noteMapper;
         this.commentMapper = commentMapper;
         this.collectionNoteMapper = collectionNoteMapper;
         this.questionMapper = questionMapper;
         this.tagService = tagService;
+        this.noteDailyStatService = noteDailyStatService;
+        this.imageCleanupService = imageCleanupService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -103,12 +113,15 @@ public class NoteServiceImpl implements NoteService {
         if (!note.getAuthorId().equals(operatorId)) {
             throw BusinessException.of(ErrorCode.FORBIDDEN, "只能编辑自己的笔记");
         }
+        String oldContent = note.getContent();
         noteMapper.updateContent(noteId, content,
                 buildSearchVector(note.getQuestionTitle(), content));
         // tags=null 表示旧客户端未传, 保留原标签
         if (tags != null) {
             tagService.syncNoteTags(noteId, note.getQuestionId(), tags);
         }
+        // 正文里被移除的图片: 事务提交后再删, 回滚不会误删文件
+        runAfterCommit(() -> imageCleanupService.cleanupRemovedImages(oldContent, content));
     }
 
     @Override
@@ -122,7 +135,10 @@ public class NoteServiceImpl implements NoteService {
         commentMapper.softDeleteByNoteId(noteId);
         collectionNoteMapper.deleteByNoteId(noteId);
         tagService.deleteNoteTags(noteId);
+        noteDailyStatService.deleteByNoteId(noteId);
         noteMapper.deleteById(noteId);
+        // 笔记已删, 事务提交后逐个检查其他引用并清理正文图片
+        runAfterCommit(() -> imageCleanupService.cleanupNoteImages(note.getContent()));
         LocalDate publishedDay = note.getCreatedAt() == null
                 ? LocalDate.now() : note.getCreatedAt().toLocalDate();
         eventPublisher.publishEvent(new NoteHeatmapEvent(this, note.getAuthorId(), publishedDay, -1));
@@ -161,6 +177,20 @@ public class NoteServiceImpl implements NoteService {
     @Override
     public List<NoteVO> toVOList(List<Note> notes, Long currentUserId) {
         return toVOs(notes, currentUserId);
+    }
+
+    /** 有事务时提交后执行, 无事务(单测)直接执行 */
+    private void runAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
     }
 
     /** 搜索向量 = 题目标题 + 笔记正文(供 ngram 全文索引) */

@@ -28,7 +28,7 @@
         │              │               │
    ┌────▼────┐   ┌─────▼─────┐   ┌─────▼─────┐
    │ MySQL 8 │   │ Redis 7   │   │ 本地磁盘   │
-   │ 17 张表  │   │ 缓存/队列/限流│  │ uploads/  │
+   │ 18 张表  │   │ 缓存/队列/限流│  │ uploads/  │
    └─────────┘   └───────────┘   └───────────┘
 ```
 
@@ -42,7 +42,7 @@
 | 安全 | spring-boot-starter-security + JJWT | 0.12.x 新 API | Security 只做 CORS/BCrypt/放行，鉴权自研（同原项目模式，可控易讲）；0.12 修了 0.9 的 API 缺陷与安全问题 |
 | 持久层 | MyBatis (mybatis-spring-boot-starter) | 3.0.x | XML SQL 可控、对齐原项目便于对照；不引入 MyBatis-Plus（减少魔法，面试讲得清） |
 | 数据库 | MySQL | 8.0.41（已装） | — |
-| 缓存 | spring-boot-starter-data-redis (Lettuce) | 随 BOM | 默认 Lettuce 优于 Jedis（原项目用 Jedis） |
+| 缓存 | spring-boot-starter-data-redis (Lettuce) + Caffeine | 随 BOM | I5 多级缓存：L1 Caffeine(30s) → L2 Redis |
 | 实时 | spring-boot-starter-websocket + @stomp/stompjs | 随 BOM / 7.x | I3 未读推送；原生 WebSocket + STOMP，不引 SockJS |
 | 邮件 | spring-boot-starter-mail + QQ SMTP | 随 BOM | 真发验证码 |
 | 定时 | spring @Scheduled | 随 BOM | 单机规模够用，不引 quartz |
@@ -87,7 +87,7 @@ com.notehub
 ├── service/ + impl/   # 17 个接口
 ├── mapper/            # 14 个接口 + resources/mapper/*.xml
 ├── model/
-│   ├── entity/  # 17 张表对应
+│   ├── entity/  # 18 张表对应
 │   ├── dto/     # 请求体（@Valid 校验）
 │   ├── vo/      # 响应体
 │   └── enums/   # RedisKey、MessageType 等
@@ -101,7 +101,7 @@ com.notehub
 
 **与原项目（卡码笔记）的关键差异**：admin 接口补 `@NeedAdmin`（原项目裸奔）；事件有真监听者（原项目只定义未使用）；删除遗留废表 note_comment。
 
-## 4. 数据库设计（17 张表，MySQL 8，utf8mb4）
+## 4. 数据库设计（18 张表，MySQL 8，utf8mb4）
 
 > 完整 DDL 见 `backend/src/main/resources/db/schema.sql`（E0 阶段执行）。
 
@@ -124,6 +124,7 @@ com.notehub
 | tags | tag_id PK, name UK | uk_name |
 | question_tags | question_id, tag_id | uk(question,tag), idx_tag_question |
 | note_tags | note_id, tag_id | uk(note,tag), idx_tag_note |
+| note_daily_stats | note_id, stat_date, like_count, comment_count, collect_count | **pk(note,date) 去重**, idx_date |
 
 **设计要点**：
 - 计数列（like_count 等）冗余存储，更新用原子 `UPDATE ... SET x = x + 1 WHERE ...`（answer Issue #1646 教训）；唯一约束防重复点赞/收藏
@@ -279,6 +280,30 @@ frontend/src/
 
 > 题目标签刻意复用已有的 `exam_point`，管理端无需新增维护入口；标签为自动创建的词表，删除关联后孤立标签保留但不展示。
 
+## 5.10 深化设计（I5）
+
+```
+多级缓存: TwoLevelCacheService
+  key = cache:{domain}:v{version}:{suffix}
+  L1 Caffeine(max 1000, 30s) → L2 Redis(2~5min) → DB loader
+  写操作 invalidate(domain): 版本号+1 + 本地全清; 旧 Redis key 由 TTL 过期
+  已接入: 题库列表 / 分类树 / 热门标签; 单机版本号, 多实例 L1 最多滞后 30s
+
+限流: @RateLimit(limit, windowSeconds, key) + RateLimitAspect
+  key = rate:{scope}:{userId | clientIp(X-Forwarded-For 优先)}
+  Redis Lua: INCR + 首次 PEXPIRE(原子, 防 key 永不过期)
+  超限 → 42901; Redis 故障 fail-open
+
+计数去重: note_daily_stats 主键(note_id, stat_date)
+  点赞/取消赞、评论/删评、收藏/取消 → INSERT ... ON DUPLICATE KEY UPDATE GREATEST(x+delta,0)
+  热度榜 week/month 改为 SUM 该表(一条聚合子查询); 历史数据由迁移回填
+  注: 当日增减为"净互动", 删旧评论会记在今天
+
+上传清理: ImageCleanupService
+  提取 Markdown/HTML 图片 → note/user 引用计数 → 无引用才删
+  笔记删除/编辑(提交后)、换头像即时清理; 每周一 03:30 扫描 24h 前孤儿文件
+```
+
 ## 8. 安全设计清单
 - 密码 BCrypt（强度默认 10）；JWT HS256 + 30 天过期 + local.yaml 密钥
 - 所有 admin 接口 `@NeedAdmin`；资源写操作校验归属（owner/40301）
@@ -288,3 +313,4 @@ frontend/src/
 - 上传：仅图片后缀白名单 + 大小限制 5MB，文件名 UUID 重写，存本地 uploads/ 经 /images/** 访问
 - CORS 白名单 `http://localhost:5173`
 - WebSocket：CONNECT 帧校验 JWT；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`
+- 限流：登录/注册/搜索/发笔记/评论/点赞/上传按用户或 IP 固定窗口限流；Redis 故障 fail-open

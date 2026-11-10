@@ -14,6 +14,7 @@ import com.notehub.model.vo.question.BatchImportResultVO;
 import com.notehub.model.vo.question.QuestionVO;
 import com.notehub.service.impl.QuestionServiceImpl;
 import com.notehub.service.TagService;
+import com.notehub.TestCaches;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,8 @@ class QuestionServiceImplTest {
         tagService = mock(TagService.class);
         when(tagService.tagsByQuestionIds(any())).thenReturn(Map.of());
         when(tagService.questionTags(anyLong())).thenReturn(List.of());
-        questionService = new QuestionServiceImpl(questionMapper, categoryMapper, noteMapper, tagService);
+        questionService = new QuestionServiceImpl(questionMapper, categoryMapper, noteMapper,
+                tagService, TestCaches.passThrough());
     }
 
     private Category category() {

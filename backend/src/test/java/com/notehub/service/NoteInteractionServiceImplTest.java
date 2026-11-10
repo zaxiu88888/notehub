@@ -32,6 +32,7 @@ class NoteInteractionServiceImplTest {
     private NoteLikeMapper noteLikeMapper;
     private CommentMapper commentMapper;
     private CommentLikeMapper commentLikeMapper;
+    private NoteDailyStatService noteDailyStatService;
     private ApplicationEventPublisher publisher;
     private NoteInteractionServiceImpl service;
 
@@ -41,9 +42,10 @@ class NoteInteractionServiceImplTest {
         noteLikeMapper = mock(NoteLikeMapper.class);
         commentMapper = mock(CommentMapper.class);
         commentLikeMapper = mock(CommentLikeMapper.class);
+        noteDailyStatService = mock(NoteDailyStatService.class);
         publisher = mock(ApplicationEventPublisher.class);
         service = new NoteInteractionServiceImpl(noteMapper, noteLikeMapper,
-                commentMapper, commentLikeMapper, publisher);
+                commentMapper, commentLikeMapper, noteDailyStatService, publisher);
     }
 
     private Note note(long id, long authorId) {
@@ -74,6 +76,7 @@ class NoteInteractionServiceImplTest {
 
         service.likeNote(10L, 7L); // 7 赞 2 的笔记
         verify(noteMapper).adjustLikeCount(10L, 1);
+        verify(noteDailyStatService).recordLike(10L, 1);
         verify(publisher, times(1)).publishEvent(any(InteractionEvent.class));
 
         // 重复点赞: insert 返回 0 → 不加计数不发事件
@@ -96,6 +99,7 @@ class NoteInteractionServiceImplTest {
         when(noteLikeMapper.delete(10L, 7L)).thenReturn(1);
         service.unlikeNote(10L, 7L);
         verify(noteMapper).adjustLikeCount(10L, -1);
+        verify(noteDailyStatService).recordLike(10L, -1);
 
         when(noteLikeMapper.delete(10L, 7L)).thenReturn(0);
         service.unlikeNote(10L, 7L);
@@ -115,6 +119,7 @@ class NoteInteractionServiceImplTest {
 
         assertEquals(500L, commentId);
         verify(noteMapper).adjustCommentCount(10L, 1);
+        verify(noteDailyStatService).recordComment(10L, 1);
         verify(publisher).publishEvent(any(InteractionEvent.class));
     }
 
@@ -181,6 +186,7 @@ class NoteInteractionServiceImplTest {
 
         verify(commentMapper).softDeleteReplies(300L);
         verify(noteMapper).adjustCommentCount(10L, -3); // 1 条父 + 2 条回复
+        verify(noteDailyStatService).recordComment(10L, -3);
     }
 
     @Test

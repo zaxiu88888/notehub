@@ -1,13 +1,17 @@
 package com.notehub.service.impl;
 
+import com.notehub.common.AfterCommit;
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
 import com.notehub.mapper.CategoryMapper;
 import com.notehub.model.entity.Category;
 import com.notehub.model.vo.category.CategoryVO;
 import com.notehub.service.CategoryService;
+import com.notehub.service.TwoLevelCacheService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,13 +20,21 @@ import java.util.Map;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryMapper categoryMapper;
+    private final TwoLevelCacheService cache;
 
-    public CategoryServiceImpl(CategoryMapper categoryMapper) {
+    public CategoryServiceImpl(CategoryMapper categoryMapper, TwoLevelCacheService cache) {
         this.categoryMapper = categoryMapper;
+        this.cache = cache;
     }
 
     @Override
     public List<CategoryVO> getCategoryTree() {
+        return cache.get(TwoLevelCacheService.DOMAIN_CATEGORIES, "tree", Duration.ofMinutes(5),
+                new TypeReference<List<CategoryVO>>() {
+                }, this::loadCategoryTree);
+    }
+
+    private List<CategoryVO> loadCategoryTree() {
         List<Category> all = categoryMapper.selectAll();
         Map<Long, CategoryVO> voMap = new HashMap<>();
         for (Category c : all) {
@@ -49,6 +61,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setName(name);
         category.setParentCategoryId(parentCategoryId);
         categoryMapper.insert(category);
+        invalidateCaches();
         Category created = categoryMapper.selectById(category.getCategoryId());
         return toVO(created);
     }
@@ -64,6 +77,7 @@ public class CategoryServiceImpl implements CategoryService {
         existing.setName(name != null ? name : existing.getName());
         existing.setParentCategoryId(parentCategoryId != null ? parentCategoryId : existing.getParentCategoryId());
         categoryMapper.update(existing);
+        invalidateCaches();
         return toVO(categoryMapper.selectById(categoryId));
     }
 
@@ -77,6 +91,15 @@ public class CategoryServiceImpl implements CategoryService {
             throw BusinessException.of(ErrorCode.BAD_PARAM, "该分类下存在题目, 无法删除");
         }
         categoryMapper.deleteById(categoryId);
+        invalidateCaches();
+    }
+
+    /** 分类名会挂在题目/题库列表上, 一并失效(提交后) */
+    private void invalidateCaches() {
+        AfterCommit.run(() -> {
+            cache.invalidate(TwoLevelCacheService.DOMAIN_CATEGORIES);
+            cache.invalidate(TwoLevelCacheService.DOMAIN_QUESTIONS);
+        });
     }
 
     private void validateParent(Long parentCategoryId) {

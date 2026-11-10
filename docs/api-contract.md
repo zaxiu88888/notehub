@@ -88,6 +88,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 |---|---|---|---|
 | GET | `/notes` | 🌐 | 列表：questionId、authorId、tag（标签名精确匹配）筛选；聚合作者/题目/标签/我的互动状态（防N+1） |
 | GET | `/notes/mine?questionId=` | 🔒 | 我在该题下的笔记ID（无则 -1）；个人中心列表用 `GET /notes?authorId=` |
+| GET | `/notes/{noteId}/stats?days=7` | 🌐 | 近 N 天每日互动 `[{date,likeCount,commentCount,collectCount}]`（N 1..30） |
 | POST | `/notes` | 🔒 | `{questionId, content, tags?}`（Markdown ≤50000 字；tags 最多 5 个、每个 ≤20 字；不传则继承题目标签） |
 | PATCH | `/notes/{noteId}` | 🔒 | 仅作者（40301）；`{content, tags?}`，tags=null 不改、空数组清空 |
 | DELETE | `/notes/{noteId}` | 🔒 | 仅作者 |
@@ -205,5 +206,34 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 - 历史数据回填：`db/migration/I4_tags.sql`（可重复执行）；seed 安装时自动回填题目标签
 - 标签名大小写不敏感去重（collation）；删除题目/笔记只删关联，孤立标签保留但不出现在热门列表
 
+## 17. 深化能力（I5 已实现）
+
+### 17.1 接口限流
+- 统一超限响应：`{code:42901,message:"请求过于频繁"}`（HTTP 200）；Redis 不可用时 fail-open
+- 维度：登录用户按 `userId`，匿名按客户端 IP（优先 `X-Forwarded-For`）
+
+| 接口 | 限制 |
+|---|---|
+| `POST /users/login` | 10 次/分钟 |
+| `POST /users`（注册） | 5 次/分钟 |
+| `GET /search/notes` `/search/users` | 30 次/分钟（共享 search 窗口） |
+| `POST /notes` | 10 次/分钟 |
+| `PATCH /notes/{id}` | 30 次/分钟 |
+| `POST /comments` | 20 次/分钟 |
+| `POST/DELETE /like/**` | 60 次/分钟（共享 like 窗口） |
+| `POST /upload/image` | 20 次/分钟 |
+
+### 17.2 每日互动统计
+- `note_daily_stats` 主键 `(note_id, stat_date)`；点赞/评论/收藏变更原子 upsert（GREATEST 防负）
+- 热度榜 `week`/`month` 从该表按日求和；历史数据由 `db/migration/I5_interaction_stats.sql` 回填
+
+### 17.3 多级缓存
+- 题库列表、分类树、热门标签：Caffeine(30s) + Redis(2~5min)
+- 写操作按域失效（版本号+1）；缓存内容均为公共数据，不含用户个性化字段（myActions/myNoteId）
+
+### 17.4 上传旧文件清理
+- 笔记删除/编辑移除的图片、被替换的旧头像：引用计数为 0 才删
+- 每周一 03:30 扫描 uploads/ 中超过 24h 的无引用文件（`upload.cleanup-cron` 可配）
+
 ## 附：MVP 后迭代接口预留（不在本期实现）
-- I5：缓存分层、接口限流、计数去重统计表
+- I6：AI 题解总结、打卡 streak

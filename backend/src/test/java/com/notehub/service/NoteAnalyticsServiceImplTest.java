@@ -149,7 +149,7 @@ class NoteAnalyticsServiceImplTest {
     @DisplayName("热度榜(周): 窗口聚合 → 排名/摘要/热度分, 并写缓存")
     void ranklistWeekMapsAndCaches() {
         when(redisService.get(RedisKey.noteRanklist("week", 10))).thenReturn(null);
-        when(noteMapper.selectRanklistSince(any(LocalDateTime.class), eq(10)))
+        when(noteMapper.selectRanklistSince(any(LocalDate.class), eq(10)))
                 .thenReturn(List.of(note(1L, "# 哈希表\n```java\nint x=1;\n```", 3, 2, 1),
                         note(2L, "滑动窗口", 0, 0, 0)));
 

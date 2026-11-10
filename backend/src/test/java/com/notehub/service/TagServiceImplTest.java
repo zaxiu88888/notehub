@@ -7,6 +7,7 @@ import com.notehub.model.dto.tag.TagNameRow;
 import com.notehub.model.entity.Tag;
 import com.notehub.model.vo.tag.TagVO;
 import com.notehub.service.impl.TagServiceImpl;
+import com.notehub.TestCaches;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,8 @@ class TagServiceImplTest {
         tagMapper = mock(TagMapper.class);
         questionTagMapper = mock(QuestionTagMapper.class);
         noteTagMapper = mock(NoteTagMapper.class);
-        service = new TagServiceImpl(tagMapper, questionTagMapper, noteTagMapper);
+        service = new TagServiceImpl(tagMapper, questionTagMapper, noteTagMapper,
+                TestCaches.passThrough());
 
         // upsert 模拟 MySQL: 名称首次出现分配递增 ID, 重复返回同一 ID
         Map<String, Long> ids = new HashMap<>();

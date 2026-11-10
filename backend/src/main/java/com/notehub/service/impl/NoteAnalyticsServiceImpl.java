@@ -226,10 +226,11 @@ public class NoteAnalyticsServiceImpl implements NoteAnalyticsService {
 
     // ---------- 热度榜缓存 ----------
 
-    private LocalDateTime sinceOf(String period) {
+    /** 含今天在内的滚动窗口(近 7 天 = 今天及前 6 天) */
+    private LocalDate sinceOf(String period) {
         return switch (period) {
-            case "week" -> LocalDateTime.now().minusDays(7);
-            case "month" -> LocalDateTime.now().minusDays(30);
+            case "week" -> LocalDate.now().minusDays(6);
+            case "month" -> LocalDate.now().minusDays(29);
             default -> throw BusinessException.of(ErrorCode.BAD_PARAM, "period 不合法");
         };
     }

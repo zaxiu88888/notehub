@@ -44,6 +44,8 @@ class NoteServiceImplTest {
     private NoteMapper noteMapper;
     private QuestionMapper questionMapper;
     private TagService tagService;
+    private NoteDailyStatService noteDailyStatService;
+    private ImageCleanupService imageCleanupService;
     private ApplicationEventPublisher eventPublisher;
     private NoteServiceImpl noteService;
 
@@ -53,9 +55,12 @@ class NoteServiceImplTest {
         questionMapper = mock(QuestionMapper.class);
         tagService = mock(TagService.class);
         when(tagService.tagsByNoteIds(any())).thenReturn(Map.of());
+        noteDailyStatService = mock(NoteDailyStatService.class);
+        imageCleanupService = mock(ImageCleanupService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         noteService = new NoteServiceImpl(noteMapper, mock(CommentMapper.class),
-                mock(CollectionNoteMapper.class), questionMapper, tagService, eventPublisher);
+                mock(CollectionNoteMapper.class), questionMapper, tagService,
+                noteDailyStatService, imageCleanupService, eventPublisher);
     }
 
     private Note note(long id, long authorId) {
@@ -159,6 +164,17 @@ class NoteServiceImplTest {
     }
 
     @Test
+    @DisplayName("编辑: 清理正文中被移除的图片")
+    void updateCleansRemovedImages() {
+        when(noteMapper.selectById(10L)).thenReturn(note(10L, 2L));
+
+        noteService.updateNote(10L, 2L, "新内容");
+
+        verify(imageCleanupService).cleanupRemovedImages(
+                "# 两数之和题解\n哈希表一次遍历。", "新内容");
+    }
+
+    @Test
     @DisplayName("删除(作者): 连带软删评论 + 清空收藏夹条目")
     void deleteNoteCascades() {
         when(noteMapper.selectById(10L)).thenReturn(note(10L, 2L));
@@ -169,6 +185,8 @@ class NoteServiceImplTest {
         verify(noteMapper).deleteById(noteIdCaptor.capture());
         assertEquals(10L, noteIdCaptor.getValue());
         verify(tagService).deleteNoteTags(10L);
+        verify(noteDailyStatService).deleteByNoteId(10L);
+        verify(imageCleanupService).cleanupNoteImages("# 两数之和题解\n哈希表一次遍历。");
     }
 
     @Test

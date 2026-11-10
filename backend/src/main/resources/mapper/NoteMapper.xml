@@ -190,33 +190,28 @@
         LIMIT #{limit}
     </select>
 
-    <!-- 热度榜(窗口): 只聚合 since 之后的互动, 三个 LEFT JOIN 各一条聚合查询 -->
+    <!-- 热度榜(窗口): 聚合 note_daily_stats(主键 note+date 去重), 一条聚合子查询替代三表扫描 -->
     <select id="selectRanklistSince" resultType="com.notehub.model.entity.Note">
         SELECT n.note_id, n.author_id, n.question_id, n.content, n.created_at, n.updated_at,
                u.username AS author_name, u.avatar_url AS author_avatar_url,
                q.title AS question_title, q.difficulty AS question_difficulty,
-               COALESCE(l.cnt, 0) AS like_count,
-               COALESCE(c.cnt, 0) AS comment_count,
-               COALESCE(col.cnt, 0) AS collect_count
+               COALESCE(s.like_count, 0) AS like_count,
+               COALESCE(s.comment_count, 0) AS comment_count,
+               COALESCE(s.collect_count, 0) AS collect_count
         FROM notes n
         JOIN users u ON n.author_id = u.user_id
         JOIN questions q ON n.question_id = q.question_id
         LEFT JOIN (
-            SELECT note_id, COUNT(*) AS cnt FROM note_likes
-            WHERE created_at &gt;= #{since} GROUP BY note_id
-        ) l ON l.note_id = n.note_id
-        LEFT JOIN (
-            SELECT note_id, COUNT(*) AS cnt FROM comments
-            WHERE created_at &gt;= #{since} AND is_deleted = 0 GROUP BY note_id
-        ) c ON c.note_id = n.note_id
-        LEFT JOIN (
-            SELECT cn.note_id, COUNT(DISTINCT c.creator_id) AS cnt
-            FROM collection_notes cn
-            JOIN collections c ON cn.collection_id = c.collection_id
-            WHERE cn.created_at &gt;= #{since}
-            GROUP BY cn.note_id
-        ) col ON col.note_id = n.note_id
-        ORDER BY (COALESCE(l.cnt, 0) * 2 + COALESCE(c.cnt, 0) * 3 + COALESCE(col.cnt, 0) * 2) DESC,
+            SELECT note_id,
+                   SUM(like_count)    AS like_count,
+                   SUM(comment_count) AS comment_count,
+                   SUM(collect_count) AS collect_count
+            FROM note_daily_stats
+            WHERE stat_date &gt;= #{since}
+            GROUP BY note_id
+        ) s ON s.note_id = n.note_id
+        ORDER BY (COALESCE(s.like_count, 0) * 2 + COALESCE(s.comment_count, 0) * 3
+                  + COALESCE(s.collect_count, 0) * 2) DESC,
                  n.created_at DESC, n.note_id DESC
         LIMIT #{limit}
     </select>
@@ -251,5 +246,10 @@
         JOIN questions q ON n.question_id = q.question_id
         WHERE n.author_id = #{authorId}
         ORDER BY n.created_at ASC, n.note_id ASC
+    </select>
+
+    <!-- I5 上传清理: 笔记正文是否仍引用该图片 -->
+    <select id="countByContentContaining" resultType="long">
+        SELECT COUNT(*) FROM notes WHERE content LIKE CONCAT('%', #{url}, '%')
     </select>
 </mapper>

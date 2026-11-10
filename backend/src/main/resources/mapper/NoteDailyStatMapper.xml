@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.NoteDailyStatMapper">
+
+    <!-- 主键(note_id, stat_date)去重: 同一天多次互动只累加该行; GREATEST 防负数下穿 -->
+    <insert id="adjustLike">
+        INSERT INTO note_daily_stats (note_id, stat_date, like_count)
+        VALUES (#{noteId}, #{statDate}, GREATEST(#{delta}, 0))
+        ON DUPLICATE KEY UPDATE like_count = GREATEST(like_count + #{delta}, 0)
+    </insert>
+
+    <insert id="adjustComment">
+        INSERT INTO note_daily_stats (note_id, stat_date, comment_count)
+        VALUES (#{noteId}, #{statDate}, GREATEST(#{delta}, 0))
+        ON DUPLICATE KEY UPDATE comment_count = GREATEST(comment_count + #{delta}, 0)
+    </insert>
+
+    <insert id="adjustCollect">
+        INSERT INTO note_daily_stats (note_id, stat_date, collect_count)
+        VALUES (#{noteId}, #{statDate}, GREATEST(#{delta}, 0))
+        ON DUPLICATE KEY UPDATE collect_count = GREATEST(collect_count + #{delta}, 0)
+    </insert>
+
+    <select id="selectSince" resultType="com.notehub.model.entity.NoteDailyStat">
+        SELECT note_id, stat_date, like_count, comment_count, collect_count, updated_at
+        FROM note_daily_stats
+        WHERE note_id = #{noteId} AND stat_date &gt;= #{since}
+        ORDER BY stat_date
+    </select>
+
+    <delete id="deleteByNoteId">
+        DELETE FROM note_daily_stats WHERE note_id = #{noteId}
+    </delete>
+</mapper>

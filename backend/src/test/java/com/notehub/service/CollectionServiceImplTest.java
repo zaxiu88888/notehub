@@ -29,6 +29,7 @@ class CollectionServiceImplTest {
     private CollectionNoteMapper collectionNoteMapper;
     private NoteMapper noteMapper;
     private NoteService noteService;
+    private NoteDailyStatService noteDailyStatService;
     private CollectionServiceImpl service;
 
     @BeforeEach
@@ -37,7 +38,9 @@ class CollectionServiceImplTest {
         collectionNoteMapper = mock(CollectionNoteMapper.class);
         noteMapper = mock(NoteMapper.class);
         noteService = mock(NoteService.class);
-        service = new CollectionServiceImpl(collectionMapper, collectionNoteMapper, noteMapper, noteService);
+        noteDailyStatService = mock(NoteDailyStatService.class);
+        service = new CollectionServiceImpl(collectionMapper, collectionNoteMapper, noteMapper,
+                noteService, noteDailyStatService);
     }
 
     private Collection collection(long id, long creatorId) {
@@ -73,6 +76,7 @@ class CollectionServiceImplTest {
 
         assertEquals(1, added);
         verify(noteMapper, times(1)).adjustCollectCount(10L, 1);
+        verify(noteDailyStatService, times(1)).recordCollect(10L, 1);
         verify(noteMapper, times(0)).adjustCollectCount(11L, 1);
 
         when(noteMapper.selectById(404L)).thenReturn(null);
@@ -88,6 +92,7 @@ class CollectionServiceImplTest {
 
         service.removeNote(7L, 5L, 10L);
         verify(noteMapper).adjustCollectCount(10L, -1);
+        verify(noteDailyStatService).recordCollect(10L, -1);
 
         service.removeNote(7L, 5L, 10L);
         verify(noteMapper, times(1)).adjustCollectCount(10L, -1);

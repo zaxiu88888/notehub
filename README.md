@@ -44,7 +44,7 @@ React 18 (Antd5, :5173) ──HTTP /api, /images (Vite proxy)──▶ Spring Bo
                                                               ├─ EmailTaskConsumer(Redis List, 3s 轮询)
                                                               └─ DailyStatisticTask(23:59 cron)
                                                               │
-                                          MySQL 8 (17 表) ◀──┤──▶ Redis(验证码/限流/队列/位图)
+                                          MySQL 8 (18 表) ◀──┤──▶ Redis(缓存/限流/队列/位图)
                                           本地磁盘 uploads/ ◀──┘
 ```
 
@@ -135,7 +135,7 @@ notehub/
 - [x] I2 数据可视化：GitHub 风格热力图（Redis 位图）、笔记热度榜、个人数据卡片、Markdown 导出
 - [x] I3 实时化：WebSocket(STOMP) 推送未读消息（替代 30s 轮询，JWT 握手鉴权）
 - [x] I4 标签体系：tags/question_tags/note_tags，题目/笔记双维度筛选（题目标签由考点同步）
-- [ ] I5 深化：缓存分层、限流反垃圾、计数去重统计表
+- [x] I5 深化：Caffeine+Redis 多级缓存、Redis 固定窗口限流、每日互动去重统计表、上传旧文件清理
 - [ ] I6 拓展：AI 题解总结、打卡 streak
 
 ## 安全说明

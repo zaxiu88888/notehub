@@ -1,6 +1,7 @@
 package com.notehub.controller;
 
 import com.notehub.common.ApiResponse;
+import com.notehub.common.RateLimit;
 import com.notehub.common.RequestContext;
 import com.notehub.security.NeedLogin;
 import com.notehub.service.NoteInteractionService;
@@ -29,6 +30,7 @@ public class LikeController {
 
     @PostMapping("/like/note/{noteId}")
     @NeedLogin
+    @RateLimit(key = "like", limit = 60)
     public ApiResponse<Map<String, Integer>> likeNote(@PathVariable Long noteId) {
         int likeCount = interactionService.likeNote(noteId, requestContext.requireUserId());
         return ApiResponse.ok(Map.of("likeCount", likeCount));
@@ -36,6 +38,7 @@ public class LikeController {
 
     @DeleteMapping("/like/note/{noteId}")
     @NeedLogin
+    @RateLimit(key = "like", limit = 60)
     public ApiResponse<Void> unlikeNote(@PathVariable Long noteId) {
         interactionService.unlikeNote(noteId, requestContext.requireUserId());
         return ApiResponse.ok();
@@ -43,6 +46,7 @@ public class LikeController {
 
     @PostMapping("/like/comment/{commentId}")
     @NeedLogin
+    @RateLimit(key = "like", limit = 60)
     public ApiResponse<Void> likeComment(@PathVariable Long commentId) {
         interactionService.likeComment(commentId, requestContext.requireUserId());
         return ApiResponse.ok();
@@ -50,6 +54,7 @@ public class LikeController {
 
     @DeleteMapping("/like/comment/{commentId}")
     @NeedLogin
+    @RateLimit(key = "like", limit = 60)
     public ApiResponse<Void> unlikeComment(@PathVariable Long commentId) {
         interactionService.unlikeComment(commentId, requestContext.requireUserId());
         return ApiResponse.ok();

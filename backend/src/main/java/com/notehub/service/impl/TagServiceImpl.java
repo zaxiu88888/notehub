@@ -2,16 +2,20 @@ package com.notehub.service.impl;
 
 import com.notehub.mapper.NoteTagMapper;
 import com.notehub.mapper.QuestionTagMapper;
+import com.notehub.common.AfterCommit;
 import com.notehub.mapper.TagMapper;
 import com.notehub.model.dto.tag.TagNameRow;
 import com.notehub.model.entity.Tag;
 import com.notehub.model.vo.tag.TagVO;
 import com.notehub.service.TagService;
+import com.notehub.service.TwoLevelCacheService;
 import com.notehub.utils.TagUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,19 +34,23 @@ public class TagServiceImpl implements TagService {
     private final TagMapper tagMapper;
     private final QuestionTagMapper questionTagMapper;
     private final NoteTagMapper noteTagMapper;
+    private final TwoLevelCacheService cache;
 
     public TagServiceImpl(TagMapper tagMapper, QuestionTagMapper questionTagMapper,
-                          NoteTagMapper noteTagMapper) {
+                          NoteTagMapper noteTagMapper, TwoLevelCacheService cache) {
         this.tagMapper = tagMapper;
         this.questionTagMapper = questionTagMapper;
         this.noteTagMapper = noteTagMapper;
+        this.cache = cache;
     }
 
     @Override
     public List<TagVO> popularTags(Integer limit) {
         int size = limit == null ? DEFAULT_POPULAR_LIMIT
                 : Math.min(Math.max(limit, 1), MAX_POPULAR_LIMIT);
-        return tagMapper.selectPopular(size);
+        return cache.get(TwoLevelCacheService.DOMAIN_TAGS, "popular:" + size,
+                Duration.ofMinutes(5), new TypeReference<List<TagVO>>() {
+                }, () -> tagMapper.selectPopular(size));
     }
 
     @Override
@@ -73,6 +81,7 @@ public class TagServiceImpl implements TagService {
         List<Long> tagIds = ensureTagIds(names);
         questionTagMapper.deleteByQuestionId(questionId);
         tagIds.forEach(tagId -> questionTagMapper.insertIgnore(questionId, tagId));
+        AfterCommit.run(() -> cache.invalidate(TwoLevelCacheService.DOMAIN_TAGS));
         log.debug("[标签] 题目标签同步: questionId={}, tags={}", questionId, names);
     }
 
@@ -85,17 +94,20 @@ public class TagServiceImpl implements TagService {
         List<Long> tagIds = ensureTagIds(names);
         noteTagMapper.deleteByNoteId(noteId);
         tagIds.forEach(tagId -> noteTagMapper.insertIgnore(noteId, tagId));
+        AfterCommit.run(() -> cache.invalidate(TwoLevelCacheService.DOMAIN_TAGS));
         log.debug("[标签] 笔记标签同步: noteId={}, tags={}", noteId, names);
     }
 
     @Override
     public void deleteQuestionTags(Long questionId) {
         questionTagMapper.deleteByQuestionId(questionId);
+        AfterCommit.run(() -> cache.invalidate(TwoLevelCacheService.DOMAIN_TAGS));
     }
 
     @Override
     public void deleteNoteTags(Long noteId) {
         noteTagMapper.deleteByNoteId(noteId);
+        AfterCommit.run(() -> cache.invalidate(TwoLevelCacheService.DOMAIN_TAGS));
     }
 
     /** 名称 → tagId: 不存在则创建; 大小写不敏感命中已有标签; 按 tagId 去重 */

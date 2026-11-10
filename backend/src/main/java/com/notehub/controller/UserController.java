@@ -2,6 +2,7 @@ package com.notehub.controller;
 
 import com.notehub.common.ApiResponse;
 import com.notehub.common.PageVO;
+import com.notehub.common.RateLimit;
 import com.notehub.common.RequestContext;
 import com.notehub.model.dto.user.LoginRequest;
 import com.notehub.model.dto.user.RegisterRequest;
@@ -47,11 +48,13 @@ public class UserController {
     }
 
     @PostMapping("/users")
+    @RateLimit(key = "register", limit = 5)
     public ApiResponse<LoginUserVO> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.ok("注册成功", userService.register(request));
     }
 
     @PostMapping("/users/login")
+    @RateLimit(key = "login", limit = 10)
     public ApiResponse<LoginUserVO> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok("登录成功", userService.login(request));
     }

@@ -33,6 +33,7 @@ server:
 upload:
   path: ./uploads          # 上传目录(相对 backend 运行目录)
   url-prefix: /images      # 访问前缀(静态映射见 WebConfig)
+  cleanup-cron: "0 30 3 * * MON"  # I5 孤儿图片扫描(每周一 03:30, 跳过 24h 内新文件)
 
 app:
   ws:

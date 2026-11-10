@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -43,6 +44,8 @@ class UserServiceImplTest {
     private UserMapper userMapper;
     private EmailService emailService;
     private PasswordEncoder passwordEncoder;
+    private UploadService uploadService;
+    private ImageCleanupService imageCleanupService;
     private UserServiceImpl userService;
 
     @BeforeEach
@@ -50,8 +53,28 @@ class UserServiceImplTest {
         userMapper = mock(UserMapper.class);
         emailService = mock(EmailService.class);
         passwordEncoder = new BCryptPasswordEncoder();
+        uploadService = mock(UploadService.class);
+        imageCleanupService = mock(ImageCleanupService.class);
         userService = new UserServiceImpl(userMapper, emailService, passwordEncoder,
-                new JwtUtil(SECRET, 3600), mock(UploadService.class));
+                new JwtUtil(SECRET, 3600), uploadService, imageCleanupService);
+    }
+
+    @Test
+    @DisplayName("换头像: 更新新 URL 并清理旧头像文件")
+    void updateAvatarCleansOldFile() {
+        User existing = new User();
+        existing.setUserId(7L);
+        existing.setAvatarUrl("/images/old.png");
+        when(userMapper.selectById(7L)).thenReturn(existing);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "a.png", "image/png", new byte[]{1, 2, 3});
+        when(uploadService.saveImage(file)).thenReturn("/images/new.png");
+
+        String url = userService.updateAvatar(7L, file);
+
+        assertEquals("/images/new.png", url);
+        verify(userMapper).updateAvatar(7L, "/images/new.png");
+        verify(imageCleanupService).cleanupAvatar("/images/old.png");
     }
 
     private RegisterRequest registerRequest() {

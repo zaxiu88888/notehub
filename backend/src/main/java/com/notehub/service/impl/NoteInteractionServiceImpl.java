@@ -12,6 +12,7 @@ import com.notehub.model.entity.Comment;
 import com.notehub.model.entity.CommentLike;
 import com.notehub.model.entity.Note;
 import com.notehub.model.entity.NoteLike;
+import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteInteractionService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,15 +30,18 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     private final NoteLikeMapper noteLikeMapper;
     private final CommentMapper commentMapper;
     private final CommentLikeMapper commentLikeMapper;
+    private final NoteDailyStatService noteDailyStatService;
     private final ApplicationEventPublisher eventPublisher;
 
     public NoteInteractionServiceImpl(NoteMapper noteMapper, NoteLikeMapper noteLikeMapper,
                                       CommentMapper commentMapper, CommentLikeMapper commentLikeMapper,
+                                      NoteDailyStatService noteDailyStatService,
                                       ApplicationEventPublisher eventPublisher) {
         this.noteMapper = noteMapper;
         this.noteLikeMapper = noteLikeMapper;
         this.commentMapper = commentMapper;
         this.commentLikeMapper = commentLikeMapper;
+        this.noteDailyStatService = noteDailyStatService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -52,6 +56,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
         int inserted = noteLikeMapper.insert(like); // INSERT IGNORE, uk 防重
         if (inserted > 0) {
             noteMapper.adjustLikeCount(noteId, 1); // 原子自增
+            noteDailyStatService.recordLike(noteId, 1);
             if (!note.getAuthorId().equals(userId)) { // 自赞不通知
                 eventPublisher.publishEvent(InteractionEvent.likeNote(this, note.getAuthorId(), userId, noteId));
             }
@@ -67,6 +72,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
         int deleted = noteLikeMapper.delete(noteId, userId); // 幂等: 没赞过则无操作
         if (deleted > 0) {
             noteMapper.adjustLikeCount(noteId, -1);
+            noteDailyStatService.recordLike(noteId, -1);
         }
     }
 
@@ -99,6 +105,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
         commentMapper.insert(comment);
 
         noteMapper.adjustCommentCount(noteId, 1);
+        noteDailyStatService.recordComment(noteId, 1);
         if (rootParentId != null) {
             commentMapper.adjustReplyCount(rootParentId, 1);
         }
@@ -143,6 +150,7 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
             commentMapper.softDeleteReplies(commentId);
         }
         noteMapper.adjustCommentCount(comment.getNoteId(), (int) -(1 + activeReplies));
+        noteDailyStatService.recordComment(comment.getNoteId(), (int) -(1 + activeReplies));
         if (comment.getParentId() != null) {
             commentMapper.adjustReplyCount(comment.getParentId(), -1);
         }

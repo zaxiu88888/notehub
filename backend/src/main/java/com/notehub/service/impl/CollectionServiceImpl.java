@@ -12,6 +12,7 @@ import com.notehub.model.entity.Note;
 import com.notehub.model.vo.collection.CollectionVO;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.service.CollectionService;
+import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -29,14 +30,17 @@ public class CollectionServiceImpl implements CollectionService {
     private final CollectionNoteMapper collectionNoteMapper;
     private final NoteMapper noteMapper;
     private final NoteService noteService;
+    private final NoteDailyStatService noteDailyStatService;
 
     public CollectionServiceImpl(CollectionMapper collectionMapper,
                                  CollectionNoteMapper collectionNoteMapper,
-                                 NoteMapper noteMapper, NoteService noteService) {
+                                 NoteMapper noteMapper, NoteService noteService,
+                                 NoteDailyStatService noteDailyStatService) {
         this.collectionMapper = collectionMapper;
         this.collectionNoteMapper = collectionNoteMapper;
         this.noteMapper = noteMapper;
         this.noteService = noteService;
+        this.noteDailyStatService = noteDailyStatService;
     }
 
     @Override
@@ -83,6 +87,7 @@ public class CollectionServiceImpl implements CollectionService {
         for (Long noteId : noteIds) {
             if (!hasOtherCollectionNote(userId, noteId)) { // 该用户其他夹还有则不递减
                 noteMapper.adjustCollectCount(noteId, -1);
+                noteDailyStatService.recordCollect(noteId, -1);
             }
         }
         collectionMapper.deleteById(collectionId);
@@ -109,6 +114,7 @@ public class CollectionServiceImpl implements CollectionService {
             cn.setNoteId(noteId);
             if (collectionNoteMapper.insert(cn) > 0) { // INSERT IGNORE 幂等
                 noteMapper.adjustCollectCount(noteId, 1);
+                noteDailyStatService.recordCollect(noteId, 1);
                 added++;
             }
         }
@@ -129,6 +135,7 @@ public class CollectionServiceImpl implements CollectionService {
         int deleted = collectionNoteMapper.delete(collectionId, noteId);
         if (deleted > 0 && !hasOtherCollectionNote(userId, noteId)) {
             noteMapper.adjustCollectCount(noteId, -1); // 用户其他夹还收着就不算取消收藏
+            noteDailyStatService.recordCollect(noteId, -1);
         }
     }
 

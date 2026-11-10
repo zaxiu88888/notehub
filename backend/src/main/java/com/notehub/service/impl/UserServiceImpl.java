@@ -14,6 +14,7 @@ import com.notehub.model.vo.user.LoginUserVO;
 import com.notehub.model.vo.user.UserVO;
 import com.notehub.security.JwtUtil;
 import com.notehub.service.EmailService;
+import com.notehub.service.ImageCleanupService;
 import com.notehub.service.UploadService;
 import com.notehub.service.UserService;
 import lombok.extern.log4j.Log4j2;
@@ -33,15 +34,17 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final UploadService uploadService;
+    private final ImageCleanupService imageCleanupService;
 
     public UserServiceImpl(UserMapper userMapper, EmailService emailService,
                            PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-                           UploadService uploadService) {
+                           UploadService uploadService, ImageCleanupService imageCleanupService) {
         this.userMapper = userMapper;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.uploadService = uploadService;
+        this.imageCleanupService = imageCleanupService;
     }
 
     @Override
@@ -146,11 +149,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public String updateAvatar(Long userId, MultipartFile file) {
-        if (userMapper.selectById(userId) == null) {
+        User existing = userMapper.selectById(userId);
+        if (existing == null) {
             throw BusinessException.of(ErrorCode.NOT_FOUND);
         }
         String url = uploadService.saveImage(file);
         userMapper.updateAvatar(userId, url);
+        // 旧头像无人引用才删(换新头像后, 该 URL 应从 users 中消失)
+        imageCleanupService.cleanupAvatar(existing.getAvatarUrl());
         return url;
     }
 

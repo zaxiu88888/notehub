@@ -24,6 +24,13 @@ public class RedisServiceImpl implements RedisService {
                     "return 1",
             Long.class);
 
+    /** 固定窗口计数: INCR 后仅首次设置过期, 原子避免 key 永不过期 */
+    private static final DefaultRedisScript<Long> INCR_WITH_TTL_SCRIPT = new DefaultRedisScript<>(
+            "local c = redis.call('INCR', KEYS[1]) " +
+                    "if c == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end " +
+                    "return c",
+            Long.class);
+
     private final RedisTemplate<String, Object> redisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -86,6 +93,13 @@ public class RedisServiceImpl implements RedisService {
         Long result = stringRedisTemplate.execute(BITFIELD_INCR_SCRIPT, List.of(key),
                 String.valueOf(offset), String.valueOf(delta));
         return result != null && result == 1L;
+    }
+
+    @Override
+    public long incrementWithTtl(String key, Duration ttl) {
+        Long count = stringRedisTemplate.execute(INCR_WITH_TTL_SCRIPT, List.of(key),
+                String.valueOf(ttl.toMillis()));
+        return count == null ? 0 : count;
     }
 
     private byte[] rawKey(String key) {

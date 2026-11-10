@@ -41,6 +41,9 @@ public interface UserMapper {
 
     int updateAvatar(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
 
+    /** I5 上传清理: 头像 URL 引用数 */
+    long countByAvatarUrl(@Param("url") String url);
+
     // ---- I1 搜索 ----
     List<User> searchByKeyword(@Param("keyword") String keyword,
                                @Param("offset") int offset, @Param("limit") int limit);

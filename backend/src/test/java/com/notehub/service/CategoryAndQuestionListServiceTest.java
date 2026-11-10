@@ -48,7 +48,7 @@ class CategoryAndQuestionListServiceTest {
     @BeforeEach
     void setUp() {
         categoryMapper = mock(CategoryMapper.class);
-        categoryService = new CategoryServiceImpl(categoryMapper);
+        categoryService = new CategoryServiceImpl(categoryMapper, com.notehub.TestCaches.passThrough());
 
         questionListMapper = mock(QuestionListMapper.class);
         questionListItemMapper = mock(QuestionListItemMapper.class);

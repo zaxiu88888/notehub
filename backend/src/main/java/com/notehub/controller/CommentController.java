@@ -2,6 +2,7 @@ package com.notehub.controller;
 
 import com.notehub.common.ApiResponse;
 import com.notehub.common.PageVO;
+import com.notehub.common.RateLimit;
 import com.notehub.common.RequestContext;
 import com.notehub.model.dto.comment.CommentContentBody;
 import com.notehub.model.dto.comment.CommentUpdateBody;
@@ -55,6 +56,7 @@ public class CommentController {
 
     @PostMapping("/comments")
     @NeedLogin
+    @RateLimit(key = "comment:create", limit = 20)
     public ApiResponse<Map<String, Long>> create(@Valid @RequestBody CommentContentBody body) {
         Long commentId = interactionService.addComment(body.getNoteId(),
                 requestContext.requireUserId(), body.getParentId(), body.getContent());

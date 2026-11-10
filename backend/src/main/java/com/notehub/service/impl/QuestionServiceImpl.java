@@ -1,5 +1,6 @@
 package com.notehub.service.impl;
 
+import com.notehub.common.AfterCommit;
 import com.notehub.common.BusinessException;
 import com.notehub.common.ErrorCode;
 import com.notehub.common.PageUtils;
@@ -15,11 +16,14 @@ import com.notehub.model.vo.question.BatchImportResultVO;
 import com.notehub.model.vo.question.QuestionVO;
 import com.notehub.service.QuestionService;
 import com.notehub.service.TagService;
+import com.notehub.service.TwoLevelCacheService;
 import com.notehub.utils.QuestionMarkdownParser;
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +36,16 @@ public class QuestionServiceImpl implements QuestionService {
     private final CategoryMapper categoryMapper;
     private final NoteMapper noteMapper;
     private final TagService tagService;
+    private final TwoLevelCacheService cache;
 
     public QuestionServiceImpl(QuestionMapper questionMapper, CategoryMapper categoryMapper,
-                               NoteMapper noteMapper, TagService tagService) {
+                               NoteMapper noteMapper, TagService tagService,
+                               TwoLevelCacheService cache) {
         this.questionMapper = questionMapper;
         this.categoryMapper = categoryMapper;
         this.noteMapper = noteMapper;
         this.tagService = tagService;
+        this.cache = cache;
     }
 
     @Override
@@ -51,15 +58,36 @@ public class QuestionServiceImpl implements QuestionService {
         int page = PageUtils.clampPage(param.getPage());
         param.setPage(page);
         param.setPageSize(pageSize);
+        // 列表是公共数据(不含 myNoteId), 可安全多级缓存
+        return cache.get(TwoLevelCacheService.DOMAIN_QUESTIONS, cacheKey(param),
+                Duration.ofMinutes(2), new TypeReference<PageVO<QuestionVO>>() {
+                }, () -> loadQuestionPage(param));
+    }
 
+    private PageVO<QuestionVO> loadQuestionPage(QuestionQueryParam param) {
         long total = questionMapper.countByQuery(param);
-        List<Question> rows = questionMapper.listByQuery(param, PageUtils.offset(page, pageSize), pageSize);
+        List<Question> rows = questionMapper.listByQuery(param,
+                PageUtils.offset(param.getPage(), param.getPageSize()), param.getPageSize());
         Map<Long, List<String>> tagsByQuestion = tagService.tagsByQuestionIds(
                 rows.stream().map(Question::getQuestionId).toList());
         List<QuestionVO> list = rows.stream()
                 .map(q -> toListVO(q, tagsByQuestion.getOrDefault(q.getQuestionId(), List.of())))
                 .toList();
-        return PageVO.of(list, page, pageSize, total);
+        return PageVO.of(list, param.getPage(), param.getPageSize(), total);
+    }
+
+    private String cacheKey(QuestionQueryParam param) {
+        return param.getCategoryId() + ":" + param.getDifficulty() + ":"
+                + (param.getTag() == null ? "" : param.getTag()) + ":"
+                + param.getPage() + ":" + param.getPageSize();
+    }
+
+    /** 题目/标签/分类名变化都会影响题库列表; 提交后失效, 避免并发读回填旧值 */
+    private void invalidateQuestionCaches() {
+        AfterCommit.run(() -> {
+            cache.invalidate(TwoLevelCacheService.DOMAIN_QUESTIONS);
+            cache.invalidate(TwoLevelCacheService.DOMAIN_TAGS);
+        });
     }
 
     @Override
@@ -92,6 +120,7 @@ public class QuestionServiceImpl implements QuestionService {
         question.setDescription(description);
         questionMapper.insert(question);
         tagService.syncQuestionTags(question.getQuestionId(), examPoint);
+        invalidateQuestionCaches();
         return toDetailVO(questionMapper.selectById(question.getQuestionId()),
                 tagService.questionTags(question.getQuestionId()));
     }
@@ -115,6 +144,7 @@ public class QuestionServiceImpl implements QuestionService {
         Question updated = questionMapper.selectById(questionId);
         // examPoint 未传时沿用原值, 保证标签不丢失
         tagService.syncQuestionTags(questionId, updated.getExamPoint());
+        invalidateQuestionCaches();
         return toDetailVO(updated, tagService.questionTags(questionId));
     }
 
@@ -127,6 +157,7 @@ public class QuestionServiceImpl implements QuestionService {
         }
         tagService.deleteQuestionTags(questionId);
         questionMapper.deleteById(questionId);
+        invalidateQuestionCaches();
     }
 
     @Override
@@ -150,6 +181,7 @@ public class QuestionServiceImpl implements QuestionService {
             success++;
         }
         parsed.getErrors().forEach(e -> failures.add(new BatchImportResultVO.Failure(e.getTitle(), e.getReason())));
+        invalidateQuestionCaches();
 
         int total = success + failures.size();
         log.info("[题库] 批量导入完成: total={}, success={}, failed={}", total, success, failures.size());

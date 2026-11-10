@@ -3,6 +3,7 @@ package com.notehub.controller;
 import com.notehub.common.ApiResponse;
 import com.notehub.common.PageUtils;
 import com.notehub.common.PageVO;
+import com.notehub.common.RateLimit;
 import com.notehub.common.RequestContext;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.model.vo.user.UserVO;
@@ -28,6 +29,7 @@ public class SearchController {
     }
 
     @GetMapping("/notes")
+    @RateLimit(key = "search", limit = 30)
     public ApiResponse<PageVO<NoteVO>> searchNotes(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "1") int page,
@@ -37,6 +39,7 @@ public class SearchController {
     }
 
     @GetMapping("/users")
+    @RateLimit(key = "search", limit = 30)
     public ApiResponse<PageVO<UserVO>> searchUsers(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "1") int page,

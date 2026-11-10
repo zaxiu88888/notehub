@@ -9,12 +9,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * 本地磁盘存储: {upload.path}/{uuid}.{ext}, 经 WebConfig 的 /images/** 静态映射访问
@@ -58,6 +62,63 @@ public class UploadServiceImpl implements UploadService {
             throw BusinessException.of(ErrorCode.INTERNAL_ERROR, "图片保存失败");
         }
         return urlPrefix + "/" + filename;
+    }
+
+    @Override
+    public boolean deleteByUrl(String url) {
+        Path file = resolveLocalFile(url);
+        if (file == null) {
+            return false;
+        }
+        try {
+            boolean deleted = Files.deleteIfExists(file);
+            if (deleted) {
+                log.info("[上传清理] 已删除: {}", url);
+            }
+            return deleted;
+        } catch (IOException e) {
+            log.warn("[上传清理] 删除失败: url={}, err={}", url, e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public List<String> listStoredUrls(Duration minAge) {
+        if (!Files.isDirectory(uploadDir)) {
+            return List.of();
+        }
+        long cutoff = System.currentTimeMillis() - minAge.toMillis();
+        try (Stream<Path> files = Files.list(uploadDir)) {
+            return files.filter(Files::isRegularFile)
+                    .filter(file -> {
+                        try {
+                            return Files.getLastModifiedTime(file).toMillis() <= cutoff;
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    })
+                    .map(file -> urlPrefix + "/" + file.getFileName())
+                    .sorted()
+                    .toList();
+        } catch (IOException | UncheckedIOException e) {
+            log.warn("[上传清理] 扫描目录失败: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** URL → 本地文件; 只接受单层文件名, 防路径穿越 */
+    private Path resolveLocalFile(String url) {
+        String prefix = urlPrefix + "/";
+        if (url == null || !url.startsWith(prefix)) {
+            return null;
+        }
+        String filename = url.substring(prefix.length());
+        if (filename.isBlank() || filename.contains("..")
+                || filename.contains("/") || filename.contains("\\")) {
+            return null;
+        }
+        Path file = uploadDir.resolve(filename).normalize();
+        return file.startsWith(uploadDir) ? file : null;
     }
 
     private String extensionOf(String originalFilename) {

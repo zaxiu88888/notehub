@@ -80,8 +80,8 @@ public interface NoteMapper {
     /** 热度榜(累计): 直接使用 notes 上的计数列 */
     List<Note> selectRanklistAll(@Param("limit") int limit);
 
-    /** 热度榜(窗口): 只统计 since 之后的赞/评/藏 */
-    List<Note> selectRanklistSince(@Param("since") LocalDateTime since, @Param("limit") int limit);
+    /** 热度榜(窗口): 聚合 since 之后的每日互动统计 */
+    List<Note> selectRanklistSince(@Param("since") LocalDate since, @Param("limit") int limit);
 
     /** 个人累计指标一条 SQL 拿齐 */
     NoteTotalsRow selectNoteTotals(@Param("authorId") Long authorId);
@@ -94,4 +94,7 @@ public interface NoteMapper {
 
     /** 导出全部笔记(按时间正序) */
     List<Note> selectAllByAuthor(@Param("authorId") Long authorId);
+
+    /** I5 上传清理: 正文引用该图片的笔记数 */
+    long countByContentContaining(@Param("url") String url);
 }

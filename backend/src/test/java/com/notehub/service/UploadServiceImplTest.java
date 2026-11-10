@@ -11,9 +11,11 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -81,5 +83,26 @@ class UploadServiceImplTest {
         String filename = url.substring("/images/".length());
         assertTrue(Pattern.matches("[0-9a-f]{32}\\.png", filename));
         assertTrue(Files.exists(tempDir.resolve(filename)));
+    }
+
+    @Test
+    @DisplayName("删除: 只允许本服务 /images/ 扁平文件名, 越界/外链拒绝")
+    void deletesOnlyLocalFlatFiles() throws Exception {
+        String url = uploadService.saveImage(file("a.png", 10));
+        String filename = url.substring("/images/".length());
+
+        assertTrue(uploadService.deleteByUrl(url));
+        assertFalse(Files.exists(tempDir.resolve(filename)));
+        assertFalse(uploadService.deleteByUrl("/images/../evil.png"));
+        assertFalse(uploadService.deleteByUrl("https://example.com/a.png"));
+        assertFalse(uploadService.deleteByUrl(""));
+    }
+
+    @Test
+    @DisplayName("列出已上传图片: 仅文件, URL 形式 /images/uuid.ext")
+    void listsStoredUrls() {
+        String url = uploadService.saveImage(file("a.png", 10));
+
+        assertTrue(uploadService.listStoredUrls(Duration.ZERO).contains(url));
     }
 }
