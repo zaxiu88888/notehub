@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.notehub.mapper.CheckinMapper">
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO user_checkins (user_id, checkin_date)
+        VALUES (#{userId}, #{date})
+    </insert>
+
+    <select id="selectDatesDesc" resultType="java.time.LocalDate">
+        SELECT checkin_date
+        FROM user_checkins
+        WHERE user_id = #{userId}
+        ORDER BY checkin_date DESC
+    </select>
+</mapper>

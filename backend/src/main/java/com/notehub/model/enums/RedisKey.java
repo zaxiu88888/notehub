@@ -32,4 +32,9 @@ public final class RedisKey {
     public static String noteRanklist(String period, int limit) {
         return "rank:notes:" + period + ":" + limit;
     }
+
+    /** AI 总结缓存: ai:summary:{noteId} */
+    public static String aiSummary(Long noteId) {
+        return "ai:summary:" + noteId;
+    }
 }

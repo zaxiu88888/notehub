@@ -1,6 +1,7 @@
 import http, { ApiError, request } from '@/request/http';
 import type { ApiResponse, PageData } from '@/request/types';
 import type {
+  AiSummaryVO,
   CollectionVO,
   CommentVO,
   HeatmapVO,
@@ -73,6 +74,14 @@ export function getNoteRanklist(params: { period?: RankPeriod; limit?: number })
 
 export function getNoteStats() {
   return request<NoteStatsVO>({ url: '/api/notes/top3count', method: 'GET' });
+}
+
+/** AI 题解总结(未配置模型时后端返回本地摘要) */
+export function summarizeNote(noteId: number) {
+  return request<AiSummaryVO>({
+    url: `/api/notes/${noteId}/ai-summary`,
+    method: 'POST',
+  });
 }
 
 /** 导出 Markdown 附件: 不走统一 JSON 解包, 直接触发浏览器下载 */

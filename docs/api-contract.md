@@ -89,6 +89,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | GET | `/notes` | 🌐 | 列表：questionId、authorId、tag（标签名精确匹配）筛选；聚合作者/题目/标签/我的互动状态（防N+1） |
 | GET | `/notes/mine?questionId=` | 🔒 | 我在该题下的笔记ID（无则 -1）；个人中心列表用 `GET /notes?authorId=` |
 | GET | `/notes/{noteId}/stats?days=7` | 🌐 | 近 N 天每日互动 `[{date,likeCount,commentCount,collectCount}]`（N 1..30） |
+| POST | `/notes/{noteId}/ai-summary` | 🔒 | AI 题解总结 `{noteId,summary,source:"ai"\|"local"}`；5 次/分钟；缓存 6h |
 | POST | `/notes` | 🔒 | `{questionId, content, tags?}`（Markdown ≤50000 字；tags 最多 5 个、每个 ≤20 字；不传则继承题目标签） |
 | PATCH | `/notes/{noteId}` | 🔒 | 仅作者（40301）；`{content, tags?}`，tags=null 不改、空数组清空 |
 | DELETE | `/notes/{noteId}` | 🔒 | 仅作者 |
@@ -239,5 +240,18 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 - 每周一 03:30 扫描 uploads/ 中超过 24h 的无引用文件（`upload.cleanup-cron` 可配）
 - 周任务一次取全量正文/头像构建引用集合，避免逐文件全表 LIKE
 
-## 附：MVP 后迭代接口预留（不在本期实现）
-- I6：AI 题解总结、打卡 streak
+## 18. AI 总结与打卡（I6 已实现）
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| POST | `/notes/{noteId}/ai-summary` | 🔒 | 生成/读取笔记总结；未配置模型或调用失败时 `source=local`；5 次/分钟 |
+| POST | `/checkin` | 🔒 | 今日打卡（主键幂等）；5 次/分钟；返回打卡状态 |
+| GET | `/checkin/status` | 🔒 | `{today,checkedInToday,currentStreak,longestStreak,totalDays}` |
+
+- AI 配置：`ai.summary.enabled=true` + `ai.summary.api-key`（建议环境变量 `AI_SUMMARY_API_KEY`）；OpenAI 兼容 `/chat/completions`
+- 总结缓存 `ai:summary:{noteId}` 6 小时，笔记编辑/删除后失效
+- 打卡连击：最近一次为今天/昨天才延续；同一天重复打卡幂等
+
+---
+
+> 路线图 I1–I6 已全部实现。

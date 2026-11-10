@@ -1,5 +1,5 @@
 -- =====================================================================
--- notehub 数据库结构 v1.2（18 张表: MVP 14 + I4 标签 3 + I5 每日互动统计 1）
+-- notehub 数据库结构 v1.3（19 张表: MVP 14 + I4 标签 3 + I5 每日互动统计 1 + I6 打卡 1）
 -- 执行: mysql -uroot -p notehub < schema.sql
 -- 约定: 主键 BIGINT UNSIGNED; created_at/updated_at 由数据库维护;
 --       不建物理外键(应用层保证一致性, 索引替代); 唯一约束防重复互动
@@ -233,3 +233,12 @@ CREATE TABLE IF NOT EXISTS note_daily_stats (
     PRIMARY KEY (note_id, stat_date),
     KEY idx_date (stat_date)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='笔记每日互动统计';
+
+-- 19. 每日打卡(主键去重, 同一天只算一次)
+CREATE TABLE IF NOT EXISTS user_checkins (
+    user_id      BIGINT UNSIGNED NOT NULL,
+    checkin_date DATE            NOT NULL,
+    created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, checkin_date),
+    KEY idx_date (checkin_date)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='用户每日打卡';

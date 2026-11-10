@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { App, Card, Col, Empty, Row, Select, Skeleton, Space, Statistic, Typography } from 'antd';
+import { App, Button, Card, Col, Empty, Row, Select, Skeleton, Space, Statistic, Typography } from 'antd';
 import {
+  CalendarOutlined,
   CommentOutlined,
   FileTextOutlined,
   FireOutlined,
@@ -11,6 +12,8 @@ import {
 import dayjs from 'dayjs';
 import { getHeatmap, getNoteStats } from '@/domain/note/api';
 import type { HeatmapVO, NoteStatsVO } from '@/domain/note/types';
+import { checkin, getCheckinStatus } from '@/domain/checkin/api';
+import type { CheckinStatusVO } from '@/domain/checkin/types';
 import Heatmap from '@/domain/note/components/Heatmap';
 
 const CURRENT_YEAR = dayjs().year();
@@ -25,8 +28,32 @@ export default function DataPanel() {
   const [year, setYear] = useState(CURRENT_YEAR);
   const [stats, setStats] = useState<NoteStatsVO | null>(null);
   const [heatmap, setHeatmap] = useState<HeatmapVO | null>(null);
+  const [checkinStatus, setCheckinStatus] = useState<CheckinStatusVO | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingHeatmap, setLoadingHeatmap] = useState(true);
+  const [loadingCheckin, setLoadingCheckin] = useState(true);
+  const [checking, setChecking] = useState(false);
+
+  useEffect(() => {
+    setLoadingCheckin(true);
+    getCheckinStatus()
+      .then(setCheckinStatus)
+      .catch(() => undefined)
+      .finally(() => setLoadingCheckin(false));
+  }, []);
+
+  const handleCheckin = async () => {
+    setChecking(true);
+    try {
+      const status = await checkin();
+      setCheckinStatus(status);
+      message.success(`打卡成功，已连续打卡 ${status.currentStreak} 天`);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '打卡失败');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   useEffect(() => {
     setLoadingStats(true);
@@ -52,6 +79,51 @@ export default function DataPanel() {
 
   return (
     <>
+      <Card
+        size="small"
+        style={{ marginBottom: 16 }}
+        title={
+          <Space>
+            <CalendarOutlined style={{ color: '#fa541c' }} />
+            每日打卡
+          </Space>
+        }
+      >
+        <Row align="middle" justify="space-between" gutter={[12, 12]}>
+          <Col>
+            <Space size={32} wrap>
+              <Statistic
+                title="连续打卡"
+                value={checkinStatus?.currentStreak ?? 0}
+                suffix="天"
+                prefix={<CalendarOutlined style={{ color: '#fa541c' }} />}
+                loading={loadingCheckin}
+              />
+              <Statistic
+                title="累计打卡"
+                value={checkinStatus?.totalDays ?? 0}
+                suffix="天"
+                loading={loadingCheckin}
+              />
+              <Typography.Text type="secondary">
+                最长连击 {checkinStatus?.longestStreak ?? 0} 天
+              </Typography.Text>
+            </Space>
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              icon={<CalendarOutlined />}
+              loading={checking}
+              disabled={loadingCheckin || checkinStatus?.checkedInToday}
+              onClick={handleCheckin}
+            >
+              {checkinStatus?.checkedInToday ? '今日已打卡' : '今日打卡'}
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+
       <Row gutter={[16, 16]}>
         {cards.map((card) => (
           <Col xs={24} sm={8} key={card.title}>

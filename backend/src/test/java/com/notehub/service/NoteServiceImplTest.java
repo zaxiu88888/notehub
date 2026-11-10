@@ -46,6 +46,7 @@ class NoteServiceImplTest {
     private TagService tagService;
     private NoteDailyStatService noteDailyStatService;
     private ImageCleanupService imageCleanupService;
+    private AiSummaryService aiSummaryService;
     private ApplicationEventPublisher eventPublisher;
     private NoteServiceImpl noteService;
 
@@ -57,10 +58,11 @@ class NoteServiceImplTest {
         when(tagService.tagsByNoteIds(any())).thenReturn(Map.of());
         noteDailyStatService = mock(NoteDailyStatService.class);
         imageCleanupService = mock(ImageCleanupService.class);
+        aiSummaryService = mock(AiSummaryService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         noteService = new NoteServiceImpl(noteMapper, mock(CommentMapper.class),
                 mock(CollectionNoteMapper.class), questionMapper, tagService,
-                noteDailyStatService, imageCleanupService, eventPublisher);
+                noteDailyStatService, imageCleanupService, aiSummaryService, eventPublisher);
     }
 
     private Note note(long id, long authorId) {
@@ -172,6 +174,7 @@ class NoteServiceImplTest {
 
         verify(imageCleanupService).cleanupRemovedImages(
                 "# 两数之和题解\n哈希表一次遍历。", "新内容");
+        verify(aiSummaryService).evict(10L);
     }
 
     @Test
@@ -187,6 +190,7 @@ class NoteServiceImplTest {
         verify(tagService).deleteNoteTags(10L);
         verify(noteDailyStatService).deleteByNoteId(10L);
         verify(imageCleanupService).cleanupNoteImages("# 两数之和题解\n哈希表一次遍历。");
+        verify(aiSummaryService).evict(10L);
     }
 
     @Test

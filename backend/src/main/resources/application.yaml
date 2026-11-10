@@ -39,3 +39,12 @@ app:
   ws:
     # STOMP 握手允许的来源(逗号分隔); 生产环境改成实际域名
     allowed-origins: http://localhost:5173
+
+ai:
+  summary:
+    # 默认关闭: 未配置时接口返回本地摘要; 配置 API Key 后走 OpenAI 兼容接口
+    enabled: false
+    base-url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    api-key: ${AI_SUMMARY_API_KEY:}
+    timeout-seconds: 20

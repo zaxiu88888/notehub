@@ -13,6 +13,7 @@ import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.entity.Note;
 import com.notehub.model.entity.Question;
 import com.notehub.model.vo.note.NoteVO;
+import com.notehub.service.AiSummaryService;
 import com.notehub.service.ImageCleanupService;
 import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteService;
@@ -47,12 +48,13 @@ public class NoteServiceImpl implements NoteService {
     private final TagService tagService;
     private final NoteDailyStatService noteDailyStatService;
     private final ImageCleanupService imageCleanupService;
+    private final AiSummaryService aiSummaryService;
     private final ApplicationEventPublisher eventPublisher;
 
     public NoteServiceImpl(NoteMapper noteMapper, CommentMapper commentMapper,
                            CollectionNoteMapper collectionNoteMapper, QuestionMapper questionMapper,
                            TagService tagService, NoteDailyStatService noteDailyStatService,
-                           ImageCleanupService imageCleanupService,
+                           ImageCleanupService imageCleanupService, AiSummaryService aiSummaryService,
                            ApplicationEventPublisher eventPublisher) {
         this.noteMapper = noteMapper;
         this.commentMapper = commentMapper;
@@ -61,6 +63,7 @@ public class NoteServiceImpl implements NoteService {
         this.tagService = tagService;
         this.noteDailyStatService = noteDailyStatService;
         this.imageCleanupService = imageCleanupService;
+        this.aiSummaryService = aiSummaryService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -122,6 +125,7 @@ public class NoteServiceImpl implements NoteService {
         }
         // 正文里被移除的图片: 事务提交后再删, 回滚不会误删文件
         runAfterCommit(() -> imageCleanupService.cleanupRemovedImages(oldContent, content));
+        runAfterCommit(() -> aiSummaryService.evict(noteId));
     }
 
     @Override
@@ -139,6 +143,7 @@ public class NoteServiceImpl implements NoteService {
         noteMapper.deleteById(noteId);
         // 笔记已删, 事务提交后逐个检查其他引用并清理正文图片
         runAfterCommit(() -> imageCleanupService.cleanupNoteImages(note.getContent()));
+        runAfterCommit(() -> aiSummaryService.evict(noteId));
         LocalDate publishedDay = note.getCreatedAt() == null
                 ? LocalDate.now() : note.getCreatedAt().toLocalDate();
         eventPublisher.publishEvent(new NoteHeatmapEvent(this, note.getAuthorId(), publishedDay, -1));

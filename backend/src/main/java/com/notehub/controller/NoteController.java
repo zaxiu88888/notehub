@@ -7,12 +7,14 @@ import com.notehub.common.RequestContext;
 import com.notehub.model.dto.note.NoteContentBody;
 import com.notehub.model.dto.note.NoteQueryParams;
 import com.notehub.model.dto.note.NoteUpdateBody;
+import com.notehub.model.vo.note.AiSummaryVO;
 import com.notehub.model.vo.note.HeatmapVO;
 import com.notehub.model.vo.note.NoteDailyStatVO;
 import com.notehub.model.vo.note.NoteStatsVO;
 import com.notehub.model.vo.note.NoteVO;
 import com.notehub.model.vo.note.RankNoteVO;
 import com.notehub.security.NeedLogin;
+import com.notehub.service.AiSummaryService;
 import com.notehub.service.NoteAnalyticsService;
 import com.notehub.service.NoteDailyStatService;
 import com.notehub.service.NoteService;
@@ -49,14 +51,17 @@ public class NoteController {
     private final NoteService noteService;
     private final NoteAnalyticsService analyticsService;
     private final NoteDailyStatService noteDailyStatService;
+    private final AiSummaryService aiSummaryService;
     private final RequestContext requestContext;
 
     public NoteController(NoteService noteService, NoteAnalyticsService analyticsService,
                           NoteDailyStatService noteDailyStatService,
+                          AiSummaryService aiSummaryService,
                           RequestContext requestContext) {
         this.noteService = noteService;
         this.analyticsService = analyticsService;
         this.noteDailyStatService = noteDailyStatService;
+        this.aiSummaryService = aiSummaryService;
         this.requestContext = requestContext;
     }
 
@@ -123,6 +128,14 @@ public class NoteController {
             @RequestParam(defaultValue = "week") String period,
             @RequestParam(required = false) Integer limit) {
         return ApiResponse.ok(analyticsService.getRanklist(period, limit));
+    }
+
+    /** AI 题解总结: 未配置模型时返回本地摘要; 结果缓存 6h */
+    @PostMapping("/notes/{noteId}/ai-summary")
+    @NeedLogin
+    @RateLimit(key = "ai:summary", limit = 5)
+    public ApiResponse<AiSummaryVO> aiSummary(@PathVariable Long noteId) {
+        return ApiResponse.ok(aiSummaryService.summarize(noteId));
     }
 
     /** 笔记近 N 天互动趋势(每日点赞/评论/收藏, 主键去重) */

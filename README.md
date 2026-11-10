@@ -17,7 +17,8 @@
 - 互动：点赞（幂等）、多收藏夹、评论与楼中楼回复、评论点赞
 - 消息中心：点赞/评论通知、分类型未读角标、一键已读、点击跳转目标笔记；WebSocket 实时推送
 - 搜索：顶栏关键词搜索笔记（全文索引 + Jieba）与用户；笔记热度榜
-- 个人中心：资料管理、我的笔记、收藏夹管理、刷题热力图与数据卡片、Markdown 导出；他人主页
+- 个人中心：资料管理、我的笔记、收藏夹管理、刷题热力图与数据卡片、每日打卡 streak、Markdown 导出；他人主页
+- AI 助手：笔记一键生成题解总结（可配置 OpenAI 兼容接口，未配置时本地摘要降级）
 
 **管理端**（`/admin`，仅管理员）
 - 数据看板：今日 6 项指标 + 每日快照趋势（23:59 定时落库）
@@ -44,7 +45,7 @@ React 18 (Antd5, :5173) ──HTTP /api, /images (Vite proxy)──▶ Spring Bo
                                                               ├─ EmailTaskConsumer(Redis List, 3s 轮询)
                                                               └─ DailyStatisticTask(23:59 cron)
                                                               │
-                                          MySQL 8 (18 表) ◀──┤──▶ Redis(缓存/限流/队列/位图)
+                                          MySQL 8 (19 表) ◀──┤──▶ Redis(缓存/限流/队列/位图)
                                           本地磁盘 uploads/ ◀──┘
 ```
 
@@ -136,7 +137,7 @@ notehub/
 - [x] I3 实时化：WebSocket(STOMP) 推送未读消息（替代 30s 轮询，JWT 握手鉴权）
 - [x] I4 标签体系：tags/question_tags/note_tags，题目/笔记双维度筛选（题目标签由考点同步）
 - [x] I5 深化：Caffeine+Redis 多级缓存（防击穿）、Redis 滑动窗口限流、每日互动去重统计表（按发生日回退）、上传旧文件清理
-- [ ] I6 拓展：AI 题解总结、打卡 streak
+- [x] I6 拓展：AI 题解总结（本地降级 + 可配置模型）、每日打卡 streak
 
 ## 安全说明
 

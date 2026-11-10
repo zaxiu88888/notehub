@@ -28,7 +28,7 @@
         │              │               │
    ┌────▼────┐   ┌─────▼─────┐   ┌─────▼─────┐
    │ MySQL 8 │   │ Redis 7   │   │ 本地磁盘   │
-   │ 18 张表  │   │ 缓存/队列/限流│  │ uploads/  │
+   │ 19 张表  │   │ 缓存/队列/限流│  │ uploads/  │
    └─────────┘   └───────────┘   └───────────┘
 ```
 
@@ -87,7 +87,7 @@ com.notehub
 ├── service/ + impl/   # 17 个接口
 ├── mapper/            # 14 个接口 + resources/mapper/*.xml
 ├── model/
-│   ├── entity/  # 18 张表对应
+│   ├── entity/  # 19 张表对应
 │   ├── dto/     # 请求体（@Valid 校验）
 │   ├── vo/      # 响应体
 │   └── enums/   # RedisKey、MessageType 等
@@ -101,7 +101,7 @@ com.notehub
 
 **与原项目（卡码笔记）的关键差异**：admin 接口补 `@NeedAdmin`（原项目裸奔）；事件有真监听者（原项目只定义未使用）；删除遗留废表 note_comment。
 
-## 4. 数据库设计（18 张表，MySQL 8，utf8mb4）
+## 4. 数据库设计（19 张表，MySQL 8，utf8mb4）
 
 > 完整 DDL 见 `backend/src/main/resources/db/schema.sql`（E0 阶段执行）。
 
@@ -125,6 +125,7 @@ com.notehub
 | question_tags | question_id, tag_id | uk(question,tag), idx_tag_question |
 | note_tags | note_id, tag_id | uk(note,tag), idx_tag_note |
 | note_daily_stats | note_id, stat_date, like_count, comment_count, collect_count | **pk(note,date) 去重**, idx_date |
+| user_checkins | user_id, checkin_date | **pk(user,date) 去重**, idx_date |
 
 **设计要点**：
 - 计数列（like_count 等）冗余存储，更新用原子 `UPDATE ... SET x = x + 1 WHERE ...`（answer Issue #1646 教训）；唯一约束防重复点赞/收藏
@@ -265,6 +266,22 @@ frontend/src/
 
 > 只推送计数不推送消息体：消息页仍按需分页拉取，推送链路轻且不会把私密内容广播到错误会话。
 
+## 5.11 AI 总结与打卡（I6）
+
+```
+AI 总结: POST /notes/{id}/ai-summary (登录, 5/min)
+  缓存 ai:summary:{noteId} TTL 6h; 笔记编辑/删除后 afterCommit evict
+  配置: ai.summary.enabled + api-key(环境变量 AI_SUMMARY_API_KEY) → OpenAI 兼容 /chat/completions
+  未配置/调用异常 → MarkdownUtils 本地摘要(source=local), 不影响主流程
+打卡: user_checkins 主键(user_id, checkin_date) 去重
+  POST /api/checkin 幂等; GET /api/checkin/status
+  连击计算复用 StreakUtils(最近一次今天/昨天才延续), 返回当前/最长/累计天数
+```
+
+> AI Key 只走环境变量/local 配置，不进仓库；默认关闭，开发环境走本地摘要。
+
+## 8. 安全设计清单
+
 ## 5.9 标签体系（I4）
 
 ```
@@ -315,4 +332,5 @@ frontend/src/
 - 上传：仅图片后缀白名单 + 大小限制 5MB，文件名 UUID 重写，存本地 uploads/ 经 /images/** 访问
 - CORS 白名单 `http://localhost:5173`
 - WebSocket：CONNECT 帧校验 JWT；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`
-- 限流：登录/注册/搜索/发笔记/评论/点赞/上传按用户或 IP 固定窗口限流；Redis 故障 fail-open
+- 限流：登录/注册/搜索/发笔记/评论/点赞/上传/AI 总结按用户或 IP 滑动窗口限流；Redis 故障 fail-open
+- AI：API Key 只从环境变量读取；默认关闭；调用失败自动降级本地摘要

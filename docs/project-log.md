@@ -14,6 +14,21 @@
 
 ---
 
+## [I6] 2026-11-10 ｜ 拓展(AI 题解总结 + 每日打卡 streak)
+
+**做了什么**
+- AI 总结: `POST /notes/{id}/ai-summary`(登录, 5/min); `AiChatClient` 支持 OpenAI 兼容接口(配置 `ai.summary.enabled/api-key`, Key 走 `AI_SUMMARY_API_KEY` 环境变量); 未配置/调用失败自动降级 `MarkdownUtils` 本地摘要; 结果缓存 `ai:summary:{noteId}` 6h, 笔记编辑/删除后 afterCommit 失效
+- 前端: 笔记卡片新增「AI 总结」按钮 + 弹窗(loading/source 标签/本地摘要提示)
+- 打卡: 新表 `user_checkins`(PK user+date 去重); `POST /api/checkin` 幂等 + `GET /api/checkin/status`; 连击复用 StreakUtils; 个人中心数据统计页新增打卡卡片(连续/累计/最长 + 今日打卡按钮)
+- DB: schema v1.3(19 表); 迁移 `I6_checkins.sql` 已执行
+
+**测试门**: 后端 194/194; 前端 38/38; 构建通过
+**冒烟门**: AI 本地摘要内容正确/缓存命中/不存在笔记 40401/第 6 次 42901; 打卡昨天已有→今日未打卡且连击存活/打卡后连击 2 天/重复打卡幂等; 浏览器: 个人中心打卡按钮切换「今日已打卡」+ toast, 题目页 AI 弹窗展示本地摘要; 测试打卡/缓存/限流数据已清理
+**自审门**: ① AI 限流断言按"第 6 次"修正(前 5 次含缓存与 404 调用, 非代码缺陷); ② 笔记编辑/删除同步失效 AI 缓存, 走 afterCommit; ③ 打卡状态用主键幂等, 连击算法复用既有 StreakUtils; ④ Vite 长时间运行 HMR 再次漏更新, 重启后验证(已记入 HANDOFF)
+**已知**: 未用真实模型 Key 联调(默认本地摘要路径已覆盖); 本地摘要为抽取式, 非生成式; 打卡按服务端本地日期
+**commit**: (本次提交)
+---
+
 ## [I5-opt] 2026-11-10 ｜ I5 优化(击穿保护/滑动窗口/发生日回退/批量扫描)
 
 **做了什么**

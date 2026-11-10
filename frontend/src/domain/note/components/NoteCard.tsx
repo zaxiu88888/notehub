@@ -19,6 +19,7 @@ import { requireLogin } from '@/utils/auth';
 import { useAppSelector } from '@/store/hooks';
 import MarkdownView from '@/base/components/MarkdownView';
 import CollectModal from './CollectModal';
+import AiSummaryButton from './AiSummaryButton';
 
 interface Props {
   note: NoteVO;
@@ -150,6 +151,7 @@ export default function NoteCard({
       )}
 
       <Space size={20} style={{ marginTop: 8 }}>
+        <AiSummaryButton noteId={note.noteId} />
         <Button
           type="text"
           size="small"

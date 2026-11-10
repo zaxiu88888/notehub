@@ -24,15 +24,17 @@
 | I2 数据可视化（热力图/热度榜/数据卡片/Markdown 导出） | ✅ 66ef081 |
 | I3 实时通知（WebSocket STOMP 未读推送，替代 30s 轮询） | ✅ 52239f4 |
 | I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 513ece8 |
-| I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ 本次完成 |
+| I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ ecd8a66 |
+| I6 拓展（AI 题解总结、每日打卡 streak） | ✅ 本次完成 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**185/185**
-- 前端 `npm test`：**36/36**；`npm run build` 通过
-- 真实环境冒烟：I2/I3/I4/I5 全部通过（I5：缓存失效/每日统计/限流 42901/图片与头像清理）
+- 后端 `mvn test`：**194/194**
+- 前端 `npm test`：**38/38**；`npm run build` 通过
+- 真实环境冒烟：I2–I6 全部通过（I6：AI 本地摘要/缓存/限流 42901、打卡幂等/连击/个人中心交互）
 
-## 下一步（按优先级，可自选）
-- **I6 拓展**：AI 题解总结、打卡 streak
+## 下一步
+- 路线图 I1–I6 已全部完成
+- 收尾建议：公开前检查清单、更新验收报告/README 截图、可选 I7（消息体推送、AI 真模型联调）
 - **I5 深化**：多级缓存、接口限流、计数去重统计表、上传旧文件清理
 - **I6 拓展**：AI 题解总结、打卡 streak
 - 已知限制见 `docs/test-report.md` §6 与各里程碑日志的“已知限制”
@@ -49,18 +51,21 @@
 8. I3：STOMP 只推未读计数不推消息体；JWT 放 CONNECT 头；只允许订阅 `/user/queue/**`；前端 5s 重连 + 重连后 HTTP 补拉
 9. I4：题目标签唯一来源是 `exam_point`（不新增管理入口）；笔记标签默认继承题目标签快照，作者可改；标签自动建词表
 10. I5：多级缓存版本号在单机内存，多实例 L1 最长滞后 30s；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
+11. I6：AI 默认关闭（本地摘要降级），Key 只走环境变量；打卡为显式每日一次，连击最近一次今天/昨天才延续
 
 ## 工作纪律（每步必须）
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
 
 ## 如何运行
-- 数据库已就绪：notehub 库 + 18 表 + 种子数据（admin/admin123 管理员、demo/user123456）；I4 标签迁移 `db/migration/I4_tags.sql`、I5 统计迁移 `db/migration/I5_interaction_stats.sql` 均已在本机执行
+- 数据库已就绪：notehub 库 + 19 表 + 种子数据（admin/admin123 管理员、demo/user123456）；迁移 `I4_tags.sql` / `I5_interaction_stats.sql` / `I6_checkins.sql` 均已在本机执行
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（185，无需 DB/Redis）；`npm test`（36）/ `npm run build`
+- 测试：`mvn test`（194，无需 DB/Redis）；`npm test`（38）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
-- I5：热点列表走 Caffeine+Redis；限流 42901；`GET /notes/{id}/stats`；迁移 `I4_tags.sql`、`I5_interaction_stats.sql` 已执行
+- I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
+- I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`
+- 本机迁移：`I4_tags.sql`、`I5_interaction_stats.sql`、`I6_checkins.sql` 均已执行
 - WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
 - **dev 邮件联调**：mail.verify-code.enabled=false 时 GET /api/email/verify-code 返回 devCode；Redis 不可用时邮件/注册不可用
 - I2 接口：`/api/notes/heatmap`、`/api/notes/ranklist`、`/api/notes/top3count`、`/api/notes/download` —— 契约见 docs/api-contract.md §14

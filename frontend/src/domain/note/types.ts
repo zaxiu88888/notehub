@@ -104,6 +104,13 @@ export interface RankNoteVO {
   hotScore: number;
 }
 
+export interface AiSummaryVO {
+  noteId: number;
+  summary: string;
+  /** ai=模型生成 local=未配置/失败时的本地摘要 */
+  source: 'ai' | 'local';
+}
+
 export interface NoteStatsVO {
   noteCount: number;
   likeCount: number;
