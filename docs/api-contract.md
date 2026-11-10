@@ -166,7 +166,8 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | GET | `/search/notes?keyword=&page=&pageSize=` | 🌐 | 笔记全文搜索（题目 + 正文，ngram 索引 + Jieba 预处理），按相关度排序；登录时返回 myActions |
 | GET | `/search/users?keyword=&page=&pageSize=` | 🌐 | 用户搜索（昵称/账号模糊），不返回邮箱 |
 
-- 空/纯符号关键词 → 空列表；关键词长度截断 64 字符；结果缓存 5 分钟（按关键词哈希+分页，仅缓存 ID 与总数）
+- 空/纯符号关键词 → 空列表；关键词长度截断 64 字符；结果缓存 5 分钟（版本号 + 关键词 SHA-256 + 分页，仅缓存 ID 与总数）；笔记增删改后版本号自增，旧缓存立即不再命中
+- 搜索结果按相关度排序（ID 批量查询后仍按相关度顺序还原）
 - 前端入口：顶栏搜索框 → `/search?keyword=`
 
 ## 14. 数据可视化 /api/notes（I2 已实现）
@@ -187,7 +188,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 | 项 | 说明 |
 |---|---|
 | 端点 | `ws://{host}/ws`（原生 WebSocket + STOMP 1.2，无 SockJS） |
-| 鉴权 | STOMP `CONNECT` 原生头 `Authorization: Bearer <jwt>`（也兼容 `token` 头）；无效 token 返回 ERROR 并断开 |
+| 鉴权 | STOMP `CONNECT` 原生头 `Authorization: Bearer <jwt>`（也兼容 `token` 头）；无效 token、用户不存在或已封禁均返回 ERROR 并断开 |
 | 订阅 | `/user/queue/unread`（仅允许 `/user/queue/**`，其他订阅/客户端 SEND 一律拒绝） |
 | 推送载荷 | `{total, like, comment, system}`，与 `GET /messages/unread/count` 一致 |
 | 触发时机 | 新消息落库（点赞/评论通知）、单条/批量/全部已读、删除消息 |
@@ -228,7 +229,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 ### 17.2 每日互动统计
 - `note_daily_stats` 主键 `(note_id, stat_date)`；点赞/评论/收藏变更原子 upsert（GREATEST 防负）
 - 热度榜 `week`/`month` 从该表按日求和；历史数据由 `db/migration/I5_interaction_stats.sql` 回填
-- 取消点赞/删评论/取消收藏按原始发生日回退，不记在操作当天
+- 取消点赞/删评论/取消收藏按原始发生日回退，不记在操作当天；删除父评论级联软删回复时，回复按各自发生日回退
 
 ### 17.3 多级缓存
 - 题库列表、分类树、热门标签：Caffeine(30s) + Redis(2~5min)

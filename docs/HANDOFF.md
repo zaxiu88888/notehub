@@ -1,7 +1,7 @@
 # HANDOFF —— 会话交接文档
 
 > 接手必读。本文件始终反映项目最新状态；每干一步由执行者刷新。
-> 最后更新：2026-11-10（I5 深化完成）
+> 最后更新：2026-11-10（I1–I6 全量复测完成）
 
 ## 项目一句话
 仿「卡码笔记」的刷题+笔记社区全栈项目（求职用），MVP=初始框架，按迭代路线逐步补齐并超越原项目。
@@ -25,19 +25,22 @@
 | I3 实时通知（WebSocket STOMP 未读推送，替代 30s 轮询） | ✅ 52239f4 |
 | I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 513ece8 |
 | I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ ecd8a66 |
-| I6 拓展（AI 题解总结、每日打卡 streak） | ✅ 本次完成 |
+| I6 拓展（AI 题解总结、每日打卡 streak） | ✅ ce23dbd + d2766e2 |
+| S5 全量复测（I1–I6 专项 191 项 + 44 项回归 + 浏览器 E2E） | ✅ 2026-11-10 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**198/198**
-- 前端 `npm test`：**38/38**；`npm run build` 通过
-- 真实环境冒烟：I2–I6 全部通过（I6：AI 本地摘要/缓存/并发合并/限流仅模型生成、打卡幂等/连击/近 7 天轨迹/个人中心交互）
+- 后端 `mvn test`：**206/206**
+- 前端 `npm test`：**39/39**；`npm run build` 通过
+- I1–I6 真实环境专项：**191/191**（I1 33 / I2 40 / I3 21 / I4 28 / I5 37 / I6 32）
+- 历史 S3 端到端回归：**44/44**（auth 切面修改后已复跑）
+- 浏览器 E2E：用户端全链路 + 管理端 5 页面通过；发现并修复评论数不刷新
+- 本轮修复见 `docs/project-log.md [RETEST]` 与 `docs/test-report.md §9`
 
 ## 下一步
-- 路线图 I1–I6 已全部完成
-- 收尾建议：公开前检查清单、更新验收报告/README 截图、可选 I7（消息体推送、AI 真模型联调）
-- **I5 深化**：多级缓存、接口限流、计数去重统计表、上传旧文件清理
-- **I6 拓展**：AI 题解总结、打卡 streak
-- 已知限制见 `docs/test-report.md` §6 与各里程碑日志的“已知限制”
+- 路线图 I1–I6 已全部完成，S5 全量复测通过
+- 收尾建议：公开前检查清单、README 截图、补真实 AI Key 联调（模型限流 5/min）
+- 可选优化：列表页评论入口接线（首页/搜索/他人主页/收藏夹，P3）、搜索低分 bigram 过滤
+- 已知限制见 `docs/test-report.md §9.5`
 
 ## 关键决策（不要推翻，除非用户要求）
 0. **邮件交付方式（2026-11-08 用户决定）**：验证码保持 dev 开关模式（enabled=false，devCode 返回）；真发链路保留为可选
@@ -52,6 +55,8 @@
 9. I4：题目标签唯一来源是 `exam_point`（不新增管理入口）；笔记标签默认继承题目标签快照，作者可改；标签自动建词表
 10. I5：多级缓存版本号在单机内存，多实例 L1 最长滞后 30s；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
 11. I6：AI 默认关闭（LocalSummarizer 本地降级），Key 只走环境变量；仅模型生成消耗 5/min（缓存/本地摘要不限流）；同笔记并发合并；打卡为显式每日一次，status 含近 7 天轨迹
+12. S5 复测：搜索缓存键 = 版本号 + SHA-256（弃 String.hashCode）；笔记增删改 afterCommit 自增 Redis 版本号立即失效；搜索结果按 ID 顺序还原相关度
+13. S5 复测：STOMP CONNECT 除 JWT 外查 users 表，封禁/已删除用户拒绝新连接；鉴权切面统一抛 BusinessException（不再直接返回 ApiResponse，避免 ResponseEntity 接口 500）
 
 ## 工作纪律（每步必须）
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
@@ -61,12 +66,13 @@
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（198，无需 DB/Redis）；`npm test`（38）/ `npm run build`
+- 测试：`mvn test`（206，无需 DB/Redis）；`npm test`（39）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
 - I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`
 - 本机迁移：`I4_tags.sql`、`I5_interaction_stats.sql`、`I6_checkins.sql` 均已执行
-- WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
+- WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；CONNECT 校验 JWT+用户未封禁；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
+- 搜索缓存：`search:notes:v{version}:{sha256}:{page}:{size}`；笔记增删改后版本号自增（`search:notes:version`），旧缓存 5min 自然过期
 - **dev 邮件联调**：mail.verify-code.enabled=false 时 GET /api/email/verify-code 返回 devCode；Redis 不可用时邮件/注册不可用
 - I2 接口：`/api/notes/heatmap`、`/api/notes/ranklist`、`/api/notes/top3count`、`/api/notes/download` —— 契约见 docs/api-contract.md §14
 - Redis 容器：重启后双击 E:\docker\post-reboot-redis.cmd；docker.exe 实际路径 `E:\docker\resources\bin\docker.exe`

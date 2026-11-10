@@ -226,8 +226,9 @@ frontend/src/
 写: 笔记创建/编辑 → search_vector = 题目标题 + 正文(纯文本)
 库: notes.search_vector + FULLTEXT INDEX ... WITH PARSER ngram
 读: 关键词 → SearchUtils(Jieba 分词/去 Markdown 符号/去重/截断) → MATCH ... AGAINST(... IN NATURAL LANGUAGE MODE)
-缓存: Redis "search:notes:{keywordHash}:{page}:{size}" → {ids,total}, TTL 5min
-     缓存内容与用户无关; VO 每次按当前用户批量补 myActions(不缓存个性化字段)
+缓存: Redis "search:notes:v{version}:{sha256(keyword)}:{page}:{size}" → {ids,total}, TTL 5min
+      笔记增删改 afterCommit 自增 "search:notes:version", 旧键自然过期
+      缓存内容与用户无关; VO 按相关度 ID 顺序还原后批量补 myActions(不缓存个性化字段)
 用户搜索: username/account LIKE, 不缓存, 邮箱脱敏
 ```
 
@@ -241,7 +242,7 @@ frontend/src/
         读: GET 位图 → 逐日解包; 未命中 → notes 按天聚合回填, TTL 1h(库为准, 自愈)
         写: 笔记发布/删除 → 事务提交后事件 → BITFIELD OVERFLOW SAT INCRBY ±1
         Redis 不可用: 降级直接查库, 不影响笔记主流程
-热度榜: 窗口(7d/30d)内 note_likes/comments/collection_notes 聚合 → hotScore=赞*2+评*3+藏*2
+热度榜: 窗口(7d/30d)内 note_daily_stats 按日求和 → hotScore=赞*2+评*3+藏*2
         all 直接读 notes 计数列; 榜单与用户无关, Redis 缓存 5min
 数据卡片: notes 计数列一条聚合 + DISTINCT 日期计算当前/最长连续提交
 导出: 全部/单篇 → Markdown 附件(仅作者), 不走统一 JSON 响应
@@ -254,7 +255,7 @@ frontend/src/
 ```
 连接: ws://host/ws (STOMP 1.2, 无 SockJS)
 鉴权: CONNECT 头 Authorization: Bearer <jwt>
-      StompAuthChannelInterceptor: 校验 JWT → accessor.setUser(userId)
+      StompAuthChannelInterceptor: 校验 JWT + users 存在且未封禁 → accessor.setUser(userId)
       仅允许 SUBSCRIBE /user/queue/**; 拒绝客户端 SEND
 订阅: /user/queue/unread
 推送: SimpMessagingTemplate.convertAndSendToUser(userId, "/queue/unread", counts)
@@ -333,6 +334,6 @@ AI 总结: POST /notes/{id}/ai-summary (登录)
 - SQL 全参数化（MyBatis #{}），无拼接
 - 上传：仅图片后缀白名单 + 大小限制 5MB，文件名 UUID 重写，存本地 uploads/ 经 /images/** 访问
 - CORS 白名单 `http://localhost:5173`
-- WebSocket：CONNECT 帧校验 JWT；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`
+- WebSocket：CONNECT 帧校验 JWT 且用户存在未封禁；只允许个人队列订阅；拒绝客户端上行 SEND；来源白名单 `app.ws.allowed-origins`
 - 限流：登录/注册/搜索/发笔记/评论/点赞/上传/AI 总结按用户或 IP 滑动窗口限流；Redis 故障 fail-open
 - AI：API Key 只从环境变量读取；默认关闭；调用失败自动降级本地摘要

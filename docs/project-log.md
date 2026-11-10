@@ -14,6 +14,37 @@
 
 ---
 
+## [RETEST] 2026-11-10 ｜ 全量复测（I1–I6 专项 + 44 项回归 + 浏览器 E2E）
+
+**做了什么**
+- 基线复现：后端 `mvn test` 198/198、前端 `npm test` 38/38、`npm run build` 通过；确认 8080/5173 旧进程不是 HEAD 代码后重启，前端重启 Vite 排除 HMR 陈旧
+- I1 搜索 33 项：中文/标题检索、空/纯符号/超长/注入、分页、用户邮箱脱敏、相关度顺序、缓存键、缓存命中、笔记增删改后失效、myActions
+- I2 数据 40 项：热力图回填/增量/删除回退/位图字节/闰年、top3、周月窗口与总榜、limit/period、Markdown 导出越权/404/未登录
+- I3 实时 21 项：CONNECT、双标签页、点赞/评论未读、已读清零、HTTP 一致、无/非法 token、越权订阅、SEND、封禁用户 HTTP+WS
+- I4 标签 28 项：考点拆分、双维度筛选、继承/覆盖/清空、大小写/# 归一、5 个与 20 字上限、题目标签重建、快照不回溯、删除守卫、孤立标签
+- I5 深化 37 项：每日赞评藏增减、原始发生日回退、跨日级联删评论、滑动窗口 30/31、题库/分类/标签缓存失效、图片/头像清理、stats 边界
+- I6 打卡/AI 32 项：打卡幂等/连击/recent、AI 本地摘要/缓存 TTL、连续 8 次不限流、编辑删除失效、404/未登录
+- API 回归：仓库外 `acceptance.mjs` 44/44（auth 切面修复后复跑）
+- 浏览器 E2E：登录/首页标签筛选/题单/写笔记（标签+AI）/点赞收藏评论/消息实时角标/搜索页/个人中心统计+打卡+导出/普通用户 403/管理端 5 页面
+
+**测试门**: 后端 **206/206**；前端 **39/39**；构建通过；I1–I6 真实环境 **191/191**；历史验收 **44/44**
+**冒烟门**: 上述全部真实 MySQL+Redis 执行；测试数据已清理（users=2/notes=2/questions=10/lists=2/checkins=0/orphan_tags=0），Redis 测试键已删除
+**自审门（diff 自审清单）**
+1. 🐛 P1：级联删除跨日父评论 500 → 先取存活回复按各自 `created_at` 回退；根因是 UNSIGNED 列 `count + (-2)` 先下穿，所有计数更新补 `CAST(... AS SIGNED)`（notes/comments/note_daily_stats）
+2. 🐛 P2：搜索相关度顺序丢失 → `selectByIds` 后按 ID 顺序还原; 缓存键 `hashCode` 碰撞 → SHA-256; 笔记写后旧缓存 → Redis 版本号入键，afterCommit 自增并 try/catch（Redis 故障不影响主流程）
+3. 🐛 P2：`/notes/download` 未登录 500 → AuthAspect 由“返回 ApiResponse”改为抛 BusinessException（ResponseEntity 接口强转根因）
+4. 🐛 P2：评论后卡片评论数不刷新 → 单独 `getNote` 局部替换，不整页 reload；自审确认未引入 effect 循环（回调 useCallback 稳定、effect 仅依赖 page/noteId）
+5. 🐛 P2：封禁用户旧 JWT 仍可建 WS → CONNECT 查 users；只拒绝新连接，既有连接不断开（已记录）
+6. ✅ 自审修正：SearchService 缓存键只计算一次（避免 read/write 期间版本变化产生跨版本写）；WS 封禁判断先 `user==null` 再读 `isBanned`；测试 SQL 输出 CRLF 归一
+7. ⚠️ 未覆盖：AI 真模型、每周孤儿 cron、列表页评论入口、搜索低分 bigram 噪声、跨用户实时笔记计数
+**commit**: bba25d0（I5）、5ac9b5c（I1）、eda8e39（auth）、171869b（评论数）、db6f5e8（WS 封禁）
+**遗留问题**
+1. 列表页（首页/搜索/他人主页/收藏夹）评论按钮未接抽屉，P3
+2. AI 真模型未联调；`AI_SUMMARY_API_KEY` 配置后需补 5 次/分钟实测
+3. 每周一 03:30 孤儿清理未等到真实触发，单测/代码审查覆盖
+
+---
+
 ## [I6-opt] 2026-11-10 ｜ I6 优化(缓存免限流/并发合并/本地摘要/打卡轨迹)
 
 **做了什么**
