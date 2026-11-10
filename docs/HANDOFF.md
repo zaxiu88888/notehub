@@ -33,12 +33,13 @@
 - 前端 `npm test`：**41/41**；`npm run build` 通过
 - I1–I6 真实环境专项：**192/192**（I1 34 / I2 40 / I3 21 / I4 28 / I5 37 / I6 32）
 - 历史 S3 端到端回归：**44/44**（auth 切面修改后已复跑）
+- AI：本地 mock **18/18** + DeepSeek `deepseek-chat` 真实联调 **13/13**（Key 仅环境变量，未入库）
 - 浏览器 E2E：用户端全链路 + 管理端 5 页面通过；发现并修复评论数不刷新
 - 本轮修复见 `docs/project-log.md` [RETEST]/[RETEST-2] 与 `docs/test-report.md §9`（含 §9.7 遗留收口）
 
 ## 下一步
 - 路线图 I1–I6 已全部完成，S5 全量复测通过
-- 收尾建议：公开前检查清单、README 截图、真实第三方 AI Key 联调（协议/限流/降级已用本地 mock 验证）
+- 收尾建议：公开前检查清单、README 截图、DeepSeek 真模型演示（Key 用 `AI_SUMMARY_API_KEY` 环境变量，勿入库）
 - 已收口：列表页评论入口已接线；搜索改布尔短语过滤 bigram 噪声；每周孤儿清理已 cron 实触发验证
 - 已知限制见 `docs/test-report.md §9.5`
 
@@ -70,6 +71,7 @@
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
 - I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`
+- AI 真模型（DeepSeek 实测）：`AI_SUMMARY_API_KEY=<key> SPRING_APPLICATION_JSON='{"ai":{"summary":{"enabled":true,"base-url":"https://api.deepseek.com/v1","model":"deepseek-chat"}}}' mvn spring-boot:run`；Key 只放环境变量，勿写入仓库
 - 本机迁移：`I4_tags.sql`、`I5_interaction_stats.sql`、`I6_checkins.sql` 均已执行
 - WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；CONNECT 校验 JWT+用户未封禁；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`
 - 搜索缓存：`search:notes:v{version}:{sha256}:{page}:{size}`；笔记增删改后版本号自增（`search:notes:version`），旧缓存 5min 自然过期
