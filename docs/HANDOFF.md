@@ -26,10 +26,10 @@
 | I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 513ece8 |
 | I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ ecd8a66 |
 | I6 拓展（AI 题解总结、每日打卡 streak） | ✅ ce23dbd + d2766e2 |
-| S5 全量复测（I1–I6 专项 192 项 + 44 项回归 + 浏览器 E2E） | ✅ 2026-11-10 |
+| S5 全量复测（I1–I6 专项 192 项 + 44 项回归 + 多实例 11 项 + 浏览器 E2E） | ✅ 2026-11-10 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**207/207**
+- 后端 `mvn test`：**208/208**
 - 前端 `npm test`：**41/41**；`npm run build` 通过
 - I1–I6 真实环境专项：**192/192**（I1 34 / I2 40 / I3 21 / I4 28 / I5 37 / I6 32）
 - 历史 S3 端到端回归：**44/44**（auth 切面修改后已复跑）
@@ -54,7 +54,7 @@
 7. I2：热力图 Redis 位图（每天 u8）+ 事件增量 + 1h TTL 回填；热度榜公共数据缓存 5min；导出为 Markdown 附件
 8. I3：STOMP 只推未读计数不推消息体；JWT 放 CONNECT 头；只允许订阅 `/user/queue/**`；前端 5s 重连 + 重连后 HTTP 补拉
 9. I4：题目标签唯一来源是 `exam_point`（不新增管理入口）；笔记标签默认继承题目标签快照，作者可改；标签自动建词表
-10. I5：多级缓存版本号在单机内存，多实例 L1 最长滞后 30s；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
+10. I5：多级缓存版本号存 Redis `cache:version:{domain}`，多实例失效即时生效（旧 L1 条目 30s 自然淘汰）；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
 11. I6：AI 默认关闭（LocalSummarizer 本地降级），Key 只走环境变量；仅模型生成消耗 5/min（缓存/本地摘要不限流）；同笔记并发合并；打卡为显式每日一次，status 含近 7 天轨迹
 12. S5 复测：搜索缓存键 = 版本号 + SHA-256（弃 String.hashCode）；笔记增删改 afterCommit 自增 Redis 版本号立即失效；搜索结果按 ID 顺序还原相关度
 13. S5 复测：STOMP CONNECT 除 JWT 外查 users 表，封禁/已删除用户拒绝新连接；鉴权切面统一抛 BusinessException（不再直接返回 ApiResponse，避免 ResponseEntity 接口 500）
@@ -67,7 +67,7 @@
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（207，无需 DB/Redis）；`npm test`（41）/ `npm run build`
+- 测试：`mvn test`（208，无需 DB/Redis）；`npm test`（41）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
 - I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`

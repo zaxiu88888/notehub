@@ -308,8 +308,9 @@ AI 总结: POST /notes/{id}/ai-summary (登录)
   key = cache:{domain}:v{version}:{suffix}
   L1 Caffeine(max 1000, 30s) → L2 Redis(2~5min) → DB loader
   L1 用 Caffeine.get(key, loader) 原子回源: 同一 key 并发未命中只查一次库(防击穿)
-  写操作 invalidate(domain): 版本号+1 + 本地全清; 旧 Redis key 由 TTL 过期
-  已接入: 题库列表 / 分类树 / 热门标签; 单机版本号, 多实例 L1 最多滞后 30s
+  写操作 invalidate(domain): Redis 版本号 cache:version:{domain} 自增 + 本地全清; 旧 key 由 TTL 过期
+  版本号存 Redis, 多实例共享: 任一节点失效后其他节点下次请求算新 key 绕过旧 L1(30s 自然淘汰)
+  已接入: 题库列表 / 分类树 / 热门标签; Redis 故障时退回本机版本
 
 限流: @RateLimit(limit, windowSeconds, key) + RateLimitAspect
   key = rate:{scope}:{userId | clientIp(X-Forwarded-For 优先)}
