@@ -13,6 +13,7 @@ import com.notehub.model.entity.User;
 import com.notehub.model.vo.user.LoginUserVO;
 import com.notehub.model.vo.user.UserVO;
 import com.notehub.security.JwtUtil;
+import com.notehub.security.WsSessionRegistry;
 import com.notehub.service.EmailService;
 import com.notehub.service.ImageCleanupService;
 import com.notehub.service.UploadService;
@@ -35,16 +36,19 @@ public class UserServiceImpl implements UserService {
     private final JwtUtil jwtUtil;
     private final UploadService uploadService;
     private final ImageCleanupService imageCleanupService;
+    private final WsSessionRegistry wsSessionRegistry;
 
     public UserServiceImpl(UserMapper userMapper, EmailService emailService,
                            PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-                           UploadService uploadService, ImageCleanupService imageCleanupService) {
+                           UploadService uploadService, ImageCleanupService imageCleanupService,
+                           WsSessionRegistry wsSessionRegistry) {
         this.userMapper = userMapper;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.uploadService = uploadService;
         this.imageCleanupService = imageCleanupService;
+        this.wsSessionRegistry = wsSessionRegistry;
     }
 
     @Override
@@ -144,6 +148,10 @@ public class UserServiceImpl implements UserService {
             throw BusinessException.of(ErrorCode.NOT_FOUND);
         }
         userMapper.updateBanned(userId, isBanned);
+        if (isBanned != null && isBanned == 1) {
+            // DB 已封禁; 主动断开已建立的 WS, 配合 CONNECT 校验覆盖新连接
+            wsSessionRegistry.disconnectUser(userId);
+        }
         log.info("[管理] 用户封禁状态变更: userId={}, isBanned={}", userId, isBanned);
     }
 

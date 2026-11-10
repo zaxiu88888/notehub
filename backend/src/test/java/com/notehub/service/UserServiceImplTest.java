@@ -12,6 +12,7 @@ import com.notehub.model.entity.User;
 import com.notehub.model.vo.user.LoginUserVO;
 import com.notehub.model.vo.user.UserVO;
 import com.notehub.security.JwtUtil;
+import com.notehub.security.WsSessionRegistry;
 import com.notehub.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +35,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,6 +48,7 @@ class UserServiceImplTest {
     private PasswordEncoder passwordEncoder;
     private UploadService uploadService;
     private ImageCleanupService imageCleanupService;
+    private WsSessionRegistry wsSessionRegistry;
     private UserServiceImpl userService;
 
     @BeforeEach
@@ -55,8 +58,9 @@ class UserServiceImplTest {
         passwordEncoder = new BCryptPasswordEncoder();
         uploadService = mock(UploadService.class);
         imageCleanupService = mock(ImageCleanupService.class);
+        wsSessionRegistry = mock(WsSessionRegistry.class);
         userService = new UserServiceImpl(userMapper, emailService, passwordEncoder,
-                new JwtUtil(SECRET, 3600), uploadService, imageCleanupService);
+                new JwtUtil(SECRET, 3600), uploadService, imageCleanupService, wsSessionRegistry);
     }
 
     @Test
@@ -236,16 +240,21 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("管理端封禁: 用户存在则更新, 不存在则 NOT_FOUND")
+    @DisplayName("管理端封禁: 更新库并断开已有 WS; 解封不断开")
     void updateBanned() {
         when(userMapper.selectById(7L)).thenReturn(persistedUser());
         userService.updateBanned(7L, 1);
         verify(userMapper).updateBanned(eq(7L), eq(1));
+        verify(wsSessionRegistry).disconnectUser(7L);
+
+        userService.updateBanned(7L, 0);
+        verify(wsSessionRegistry, times(1)).disconnectUser(7L);
 
         when(userMapper.selectById(999L)).thenReturn(null);
         BusinessException e = assertThrows(BusinessException.class,
                 () -> userService.updateBanned(999L, 1));
         assertEquals(ErrorCode.NOT_FOUND, e.getErrorCode());
+        verify(wsSessionRegistry, never()).disconnectUser(999L);
     }
 
     @Test

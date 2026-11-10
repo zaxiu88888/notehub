@@ -1,5 +1,7 @@
 package com.notehub.service.impl;
 
+import com.notehub.mapper.UserMapper;
+import com.notehub.model.entity.User;
 import com.notehub.service.MessageService;
 import com.notehub.service.UnreadPushService;
 import lombok.extern.log4j.Log4j2;
@@ -17,11 +19,14 @@ public class UnreadPushServiceImpl implements UnreadPushService {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageService messageService;
+    private final UserMapper userMapper;
 
     public UnreadPushServiceImpl(SimpMessagingTemplate messagingTemplate,
-                                 MessageService messageService) {
+                                 MessageService messageService,
+                                 UserMapper userMapper) {
         this.messagingTemplate = messagingTemplate;
         this.messageService = messageService;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -30,6 +35,12 @@ public class UnreadPushServiceImpl implements UnreadPushService {
             return;
         }
         try {
+            // 封禁/删除用户不再推送: 覆盖"连接已建立但尚未被断开"的窗口
+            User user = userMapper.selectById(userId);
+            if (user == null || (user.getIsBanned() != null && user.getIsBanned() == 1)) {
+                log.debug("[WS] 跳过封禁/不存在用户推送: userId={}", userId);
+                return;
+            }
             Map<String, Long> counts = messageService.unreadCount(userId);
             messagingTemplate.convertAndSendToUser(
                     String.valueOf(userId), "/queue/unread", counts);
