@@ -15,7 +15,7 @@ import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { getQuestion } from '@/domain/question/api';
 import type { QuestionVO } from '@/domain/question/types';
-import { getNotes } from '@/domain/note/api';
+import { getNotes, getNote } from '@/domain/note/api';
 import type { NoteVO } from '@/domain/note/types';
 import { ApiError } from '@/request/http';
 import { requireLogin } from '@/utils/auth';
@@ -69,6 +69,20 @@ export default function QuestionPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  /** 评论增删后只刷新当前笔记(不整页 reload, 避免抽屉被卸载重挂载) */
+  const refreshNote = useCallback(async (noteId: number) => {
+    try {
+      const fresh = await getNote(noteId);
+      setNotes((prev) => prev.map((n) => (n.noteId === noteId ? fresh : n)));
+    } catch {
+      // 评论数刷新失败不影响评论本身, 忽略即可
+    }
+  }, []);
+
+  const handleCommentCountChange = useCallback(() => {
+    if (commentNoteId != null) void refreshNote(commentNoteId);
+  }, [commentNoteId, refreshNote]);
 
   // 仅首次加载显示骨架; 已有数据时后台刷新不再卸载页面(否则抽屉/弹窗会被连带销毁)
   if (loading && !question) {
@@ -199,8 +213,7 @@ export default function QuestionPage() {
         destroyOnHidden
       >
         {commentNoteId != null && (
-          // 注意: 不要把 onCountChange 接回整页 reload(会卸载抽屉并形成重挂载循环)
-          <CommentsPanel noteId={commentNoteId} />
+          <CommentsPanel noteId={commentNoteId} onCountChange={handleCommentCountChange} />
         )}
       </Drawer>
     </>
