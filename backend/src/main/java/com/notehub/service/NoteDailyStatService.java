@@ -2,6 +2,7 @@ package com.notehub.service;
 
 import com.notehub.model.vo.note.NoteDailyStatVO;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -9,11 +10,24 @@ import java.util.List;
  */
 public interface NoteDailyStatService {
 
-    void recordLike(Long noteId, int delta);
+    default void recordLike(Long noteId, int delta) {
+        recordLike(noteId, LocalDate.now(), delta);
+    }
 
-    void recordComment(Long noteId, int delta);
+    /** 按互动发生日归属(取消点赞/删评论/取消收藏时用原始日期) */
+    void recordLike(Long noteId, LocalDate date, int delta);
 
-    void recordCollect(Long noteId, int delta);
+    default void recordComment(Long noteId, int delta) {
+        recordComment(noteId, LocalDate.now(), delta);
+    }
+
+    void recordComment(Long noteId, LocalDate date, int delta);
+
+    default void recordCollect(Long noteId, int delta) {
+        recordCollect(noteId, LocalDate.now(), delta);
+    }
+
+    void recordCollect(Long noteId, LocalDate date, int delta);
 
     List<NoteDailyStatVO> recent(Long noteId, Integer days);
 

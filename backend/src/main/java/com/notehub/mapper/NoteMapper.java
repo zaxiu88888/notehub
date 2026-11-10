@@ -97,4 +97,7 @@ public interface NoteMapper {
 
     /** I5 上传清理: 正文引用该图片的笔记数 */
     long countByContentContaining(@Param("url") String url);
+
+    /** I5 上传清理: 全量正文(周任务一次性构建引用集合) */
+    List<String> selectAllContents();
 }

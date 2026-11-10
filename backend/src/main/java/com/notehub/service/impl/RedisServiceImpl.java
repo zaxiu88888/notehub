@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class RedisServiceImpl implements RedisService {
@@ -24,11 +25,23 @@ public class RedisServiceImpl implements RedisService {
                     "return 1",
             Long.class);
 
-    /** 固定窗口计数: INCR 后仅首次设置过期, 原子避免 key 永不过期 */
-    private static final DefaultRedisScript<Long> INCR_WITH_TTL_SCRIPT = new DefaultRedisScript<>(
-            "local c = redis.call('INCR', KEYS[1]) " +
-                    "if c == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end " +
-                    "return c",
+    /**
+     * 滑动窗口限流(原子):
+     * 1) 删除 score <= now-window 的成员; 2) 数量 < limit 才写入并放行
+     * Redis TIME 取服务端毫秒, 避免客户端时钟偏差
+     */
+    private static final DefaultRedisScript<Long> SLIDING_WINDOW_SCRIPT = new DefaultRedisScript<>(
+            "local t = redis.call('TIME') " +
+                    "local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) " +
+                    "local window = tonumber(ARGV[1]) " +
+                    "local limit = tonumber(ARGV[2]) " +
+                    "redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, now - window) " +
+                    "if redis.call('ZCARD', KEYS[1]) < limit then " +
+                    "  redis.call('ZADD', KEYS[1], now, t[1] .. ':' .. t[2] .. ':' .. ARGV[3]) " +
+                    "  redis.call('PEXPIRE', KEYS[1], window) " +
+                    "  return 1 " +
+                    "end " +
+                    "return 0",
             Long.class);
 
     private final RedisTemplate<String, Object> redisTemplate;
@@ -96,10 +109,11 @@ public class RedisServiceImpl implements RedisService {
     }
 
     @Override
-    public long incrementWithTtl(String key, Duration ttl) {
-        Long count = stringRedisTemplate.execute(INCR_WITH_TTL_SCRIPT, List.of(key),
-                String.valueOf(ttl.toMillis()));
-        return count == null ? 0 : count;
+    public boolean slidingWindowAcquire(String key, int limit, Duration window) {
+        Long result = stringRedisTemplate.execute(SLIDING_WINDOW_SCRIPT, List.of(key),
+                String.valueOf(window.toMillis()), String.valueOf(limit),
+                UUID.randomUUID().toString());
+        return result != null && result == 1L;
     }
 
     private byte[] rawKey(String key) {

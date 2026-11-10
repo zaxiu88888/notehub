@@ -39,31 +39,27 @@ public class TwoLevelCacheServiceImpl implements TwoLevelCacheService {
     public <T> T get(String domain, String suffix, Duration ttl,
                      TypeReference<T> type, Supplier<T> loader) {
         String key = key(domain, suffix);
-        Object localHit = local.getIfPresent(key);
-        if (localHit != null) {
-            return (T) localHit;
-        }
-        try {
-            String raw = redisService.get(key);
-            if (raw != null) {
-                T value = objectMapper.readValue(raw, type);
-                local.put(key, value);
-                return value;
-            }
-        } catch (Exception e) {
-            log.warn("[缓存] L2 读取失败, 回源 DB: domain={}, err={}", domain, e.getMessage());
-        }
-
-        T value = loader.get();
-        if (value != null) {
+        // Caffeine.get(key, loader): 同一 key 并发未命中只执行一次回源(防击穿)
+        Object value = local.get(key, cacheKey -> {
             try {
-                redisService.set(key, objectMapper.writeValueAsString(value), ttl);
+                String raw = redisService.get(cacheKey);
+                if (raw != null) {
+                    return objectMapper.readValue(raw, type);
+                }
             } catch (Exception e) {
-                log.warn("[缓存] L2 写入失败: domain={}, err={}", domain, e.getMessage());
+                log.warn("[缓存] L2 读取失败, 回源 DB: domain={}, err={}", domain, e.getMessage());
             }
-            local.put(key, value);
-        }
-        return value;
+            T loaded = loader.get();
+            if (loaded != null) {
+                try {
+                    redisService.set(cacheKey, objectMapper.writeValueAsString(loaded), ttl);
+                } catch (Exception e) {
+                    log.warn("[缓存] L2 写入失败: domain={}, err={}", domain, e.getMessage());
+                }
+            }
+            return loaded;
+        });
+        return (T) value;
     }
 
     @Override

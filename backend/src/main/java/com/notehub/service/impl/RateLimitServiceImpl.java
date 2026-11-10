@@ -20,8 +20,7 @@ public class RateLimitServiceImpl implements RateLimitService {
     @Override
     public boolean tryAcquire(String key, int limit, Duration window) {
         try {
-            long count = redisService.incrementWithTtl(key, window);
-            return count <= limit;
+            return redisService.slidingWindowAcquire(key, limit, window);
         } catch (Exception e) {
             // Redis 故障时 fail-open, 避免限流组件拖垮主流程
             log.warn("[限流] Redis 不可用, 降级放行: key={}, err={}", key, e.getMessage());

@@ -52,6 +52,18 @@ class NoteDailyStatServiceImplTest {
     }
 
     @Test
+    @DisplayName("显式日期: 取消互动按原始发生日回退")
+    void recordWithExplicitDate() {
+        LocalDate day = LocalDate.of(2026, 11, 9);
+        service.recordLike(1L, day, -1);
+        service.recordComment(1L, day, -2);
+        service.recordCollect(1L, day, -1);
+        verify(statMapper).adjustLike(1L, day, -1);
+        verify(statMapper).adjustComment(1L, day, -2);
+        verify(statMapper).adjustCollect(1L, day, -1);
+    }
+
+    @Test
     @DisplayName("趋势: days 钳制到 30, 返回逐日数据")
     void recentClampsDaysAndMaps() {
         when(noteMapper.selectById(10L)).thenReturn(new Note());

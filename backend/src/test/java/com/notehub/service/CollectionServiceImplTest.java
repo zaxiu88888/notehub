@@ -6,12 +6,14 @@ import com.notehub.mapper.CollectionMapper;
 import com.notehub.mapper.CollectionNoteMapper;
 import com.notehub.mapper.NoteMapper;
 import com.notehub.model.entity.Collection;
+import com.notehub.model.entity.CollectionNote;
 import com.notehub.model.entity.Note;
 import com.notehub.service.impl.CollectionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,6 +26,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CollectionServiceImplTest {
+
+    private static final LocalDate DAY = LocalDate.of(2026, 11, 9);
 
     private CollectionMapper collectionMapper;
     private CollectionNoteMapper collectionNoteMapper;
@@ -49,6 +53,14 @@ class CollectionServiceImplTest {
         c.setCreatorId(creatorId);
         c.setName("我的收藏");
         return c;
+    }
+
+    private CollectionNote entry(long collectionId, long noteId) {
+        CollectionNote entry = new CollectionNote();
+        entry.setCollectionId(collectionId);
+        entry.setNoteId(noteId);
+        entry.setCreatedAt(DAY.atStartOfDay());
+        return entry;
     }
 
     @Test
@@ -88,11 +100,12 @@ class CollectionServiceImplTest {
     @DisplayName("移除收藏: 有则计数-1, 无则幂等")
     void removeNoteIdempotent() {
         when(collectionMapper.selectById(5L)).thenReturn(collection(5L, 7L));
+        when(collectionNoteMapper.select(5L, 10L)).thenReturn(entry(5L, 10L));
         when(collectionNoteMapper.delete(5L, 10L)).thenReturn(1).thenReturn(0);
 
         service.removeNote(7L, 5L, 10L);
         verify(noteMapper).adjustCollectCount(10L, -1);
-        verify(noteDailyStatService).recordCollect(10L, -1);
+        verify(noteDailyStatService).recordCollect(10L, DAY, -1);
 
         service.removeNote(7L, 5L, 10L);
         verify(noteMapper, times(1)).adjustCollectCount(10L, -1);
@@ -102,7 +115,8 @@ class CollectionServiceImplTest {
     @DisplayName("删除收藏夹(创建者): 先取条目再删, 无其他夹则递减")
     void deleteCollectionCascades() {
         when(collectionMapper.selectById(5L)).thenReturn(collection(5L, 7L));
-        when(collectionNoteMapper.selectNoteIdsByCollection(5L)).thenReturn(List.of(10L, 11L));
+        when(collectionNoteMapper.selectByCollection(5L))
+                .thenReturn(List.of(entry(5L, 10L), entry(5L, 11L)));
         when(collectionNoteMapper.countByCreatorAndNote(eq(7L), org.mockito.ArgumentMatchers.anyLong()))
                 .thenReturn(0L);
 
@@ -111,6 +125,8 @@ class CollectionServiceImplTest {
         verify(collectionNoteMapper).deleteByCollectionId(5L);
         verify(noteMapper).adjustCollectCount(10L, -1);
         verify(noteMapper).adjustCollectCount(11L, -1);
+        verify(noteDailyStatService).recordCollect(10L, DAY, -1);
+        verify(noteDailyStatService).recordCollect(11L, DAY, -1);
         verify(collectionMapper).deleteById(5L);
     }
 
@@ -118,11 +134,13 @@ class CollectionServiceImplTest {
     @DisplayName("移除收藏: 用户其他收藏夹仍收着 → 不递减")
     void removeNoteKeepsCountWhenInOtherCollection() {
         when(collectionMapper.selectById(5L)).thenReturn(collection(5L, 7L));
+        when(collectionNoteMapper.select(5L, 10L)).thenReturn(entry(5L, 10L));
         when(collectionNoteMapper.delete(5L, 10L)).thenReturn(1);
         when(collectionNoteMapper.countByCreatorAndNote(7L, 10L)).thenReturn(1L); // 还有别的夹
 
         service.removeNote(7L, 5L, 10L);
 
         verify(noteMapper, org.mockito.Mockito.never()).adjustCollectCount(10L, -1);
+        verify(noteDailyStatService, org.mockito.Mockito.never()).recordCollect(10L, DAY, -1);
     }
 }

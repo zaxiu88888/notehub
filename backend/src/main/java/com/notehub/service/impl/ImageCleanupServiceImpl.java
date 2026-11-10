@@ -8,6 +8,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -69,13 +70,20 @@ public class ImageCleanupServiceImpl implements ImageCleanupService {
 
     @Override
     public int sweepOrphans() {
+        // 一次取全量正文/头像在内存构建引用集合, 避免每个文件两次全表 LIKE
+        Set<String> referenced = new HashSet<>();
+        for (String content : noteMapper.selectAllContents()) {
+            referenced.addAll(extractImageUrls(content));
+        }
+        referenced.addAll(userMapper.selectAllAvatarUrls());
+
         int deleted = 0;
         for (String url : uploadService.listStoredUrls(SWEEP_MIN_AGE)) {
-            if (!isReferenced(url) && uploadService.deleteByUrl(url)) {
+            if (!referenced.contains(url) && uploadService.deleteByUrl(url)) {
                 deleted++;
             }
         }
-        log.info("[上传清理] 全量扫描完成: deleted={}", deleted);
+        log.info("[上传清理] 全量扫描完成: referenced={}, deleted={}", referenced.size(), deleted);
         return deleted;
     }
 

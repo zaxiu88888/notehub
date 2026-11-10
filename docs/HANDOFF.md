@@ -24,10 +24,10 @@
 | I2 数据可视化（热力图/热度榜/数据卡片/Markdown 导出） | ✅ 66ef081 |
 | I3 实时通知（WebSocket STOMP 未读推送，替代 30s 轮询） | ✅ 52239f4 |
 | I4 标签体系（tags/question_tags/note_tags，题目/笔记双维度筛选） | ✅ 513ece8 |
-| I5 深化（多级缓存/限流/每日互动统计/上传清理） | ✅ 本次完成 |
+| I5 深化（多级缓存/限流/每日互动统计/上传清理，含击穿保护/滑动窗口等优化） | ✅ 本次完成 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**183/183**
+- 后端 `mvn test`：**185/185**
 - 前端 `npm test`：**36/36**；`npm run build` 通过
 - 真实环境冒烟：I2/I3/I4/I5 全部通过（I5：缓存失效/每日统计/限流 42901/图片与头像清理）
 
@@ -48,7 +48,7 @@
 7. I2：热力图 Redis 位图（每天 u8）+ 事件增量 + 1h TTL 回填；热度榜公共数据缓存 5min；导出为 Markdown 附件
 8. I3：STOMP 只推未读计数不推消息体；JWT 放 CONNECT 头；只允许订阅 `/user/queue/**`；前端 5s 重连 + 重连后 HTTP 补拉
 9. I4：题目标签唯一来源是 `exam_point`（不新增管理入口）；笔记标签默认继承题目标签快照，作者可改；标签自动建词表
-10. I5：多级缓存版本号在单机内存，多实例 L1 最长滞后 30s；限流用 Redis 固定窗口（边界可瞬时双倍），Redis 故障 fail-open；每日统计记“当日净互动”
+10. I5：多级缓存版本号在单机内存，多实例 L1 最长滞后 30s；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
 
 ## 工作纪律（每步必须）
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
@@ -58,7 +58,7 @@
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（183，无需 DB/Redis）；`npm test`（36）/ `npm run build`
+- 测试：`mvn test`（185，无需 DB/Redis）；`npm test`（36）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；限流 42901；`GET /notes/{id}/stats`；迁移 `I4_tags.sql`、`I5_interaction_stats.sql` 已执行
 - WebSocket：`ws://localhost:8080/ws`（STOMP；前端开发期经 Vite `/ws` 代理）；冒烟脚本 `E:\ka\downloads\smoke\i3-ws-smoke.mjs`

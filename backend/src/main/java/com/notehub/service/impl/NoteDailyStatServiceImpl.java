@@ -27,23 +27,23 @@ public class NoteDailyStatServiceImpl implements NoteDailyStatService {
     }
 
     @Override
-    public void recordLike(Long noteId, int delta) {
+    public void recordLike(Long noteId, LocalDate date, int delta) {
         if (delta != 0) {
-            statMapper.adjustLike(noteId, LocalDate.now(), delta);
+            statMapper.adjustLike(noteId, date, delta);
         }
     }
 
     @Override
-    public void recordComment(Long noteId, int delta) {
+    public void recordComment(Long noteId, LocalDate date, int delta) {
         if (delta != 0) {
-            statMapper.adjustComment(noteId, LocalDate.now(), delta);
+            statMapper.adjustComment(noteId, date, delta);
         }
     }
 
     @Override
-    public void recordCollect(Long noteId, int delta) {
+    public void recordCollect(Long noteId, LocalDate date, int delta) {
         if (delta != 0) {
-            statMapper.adjustCollect(noteId, LocalDate.now(), delta);
+            statMapper.adjustCollect(noteId, date, delta);
         }
     }
 

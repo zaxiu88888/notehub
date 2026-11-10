@@ -7,6 +7,11 @@
         INSERT IGNORE INTO note_likes (note_id, user_id) VALUES (#{noteId}, #{userId})
     </insert>
 
+    <select id="select" resultType="com.notehub.model.entity.NoteLike">
+        SELECT note_id, user_id, created_at, updated_at
+        FROM note_likes WHERE note_id = #{noteId} AND user_id = #{userId}
+    </select>
+
     <delete id="delete">
         DELETE FROM note_likes WHERE note_id = #{noteId} AND user_id = #{userId}
     </delete>

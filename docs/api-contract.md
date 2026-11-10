@@ -211,6 +211,7 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 ### 17.1 接口限流
 - 统一超限响应：`{code:42901,message:"请求过于频繁"}`（HTTP 200）；Redis 不可用时 fail-open
 - 维度：登录用户按 `userId`，匿名按客户端 IP（优先 `X-Forwarded-For`）
+- 算法：Redis ZSET + Lua 滑动窗口（Redis TIME），窗口内精确计数，无固定窗口边界突刺
 
 | 接口 | 限制 |
 |---|---|
@@ -226,14 +227,17 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 ### 17.2 每日互动统计
 - `note_daily_stats` 主键 `(note_id, stat_date)`；点赞/评论/收藏变更原子 upsert（GREATEST 防负）
 - 热度榜 `week`/`month` 从该表按日求和；历史数据由 `db/migration/I5_interaction_stats.sql` 回填
+- 取消点赞/删评论/取消收藏按原始发生日回退，不记在操作当天
 
 ### 17.3 多级缓存
 - 题库列表、分类树、热门标签：Caffeine(30s) + Redis(2~5min)
+- 同 key 并发未命中由 Caffeine 原子回源，只查一次库（防击穿）
 - 写操作按域失效（版本号+1）；缓存内容均为公共数据，不含用户个性化字段（myActions/myNoteId）
 
 ### 17.4 上传旧文件清理
 - 笔记删除/编辑移除的图片、被替换的旧头像：引用计数为 0 才删
 - 每周一 03:30 扫描 uploads/ 中超过 24h 的无引用文件（`upload.cleanup-cron` 可配）
+- 周任务一次取全量正文/头像构建引用集合，避免逐文件全表 LIKE
 
 ## 附：MVP 后迭代接口预留（不在本期实现）
 - I6：AI 题解总结、打卡 streak

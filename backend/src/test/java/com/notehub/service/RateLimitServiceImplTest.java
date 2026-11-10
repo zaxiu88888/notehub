@@ -10,6 +10,7 @@ import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,10 +27,10 @@ class RateLimitServiceImplTest {
     }
 
     @Test
-    @DisplayName("固定窗口: 前 limit 次放行, 第 limit+1 次拒绝")
-    void allowsUpToLimit() {
-        when(redisService.incrementWithTtl(anyString(), any(Duration.class)))
-                .thenReturn(1L, 2L, 3L, 4L);
+    @DisplayName("滑动窗口: 放行/拒绝直接透传 Redis 结果")
+    void delegatesToSlidingWindow() {
+        when(redisService.slidingWindowAcquire("rate:login:u1", 3, Duration.ofMinutes(1)))
+                .thenReturn(true, true, true, false);
 
         assertTrue(service.tryAcquire("rate:login:u1", 3, Duration.ofMinutes(1)));
         assertTrue(service.tryAcquire("rate:login:u1", 3, Duration.ofMinutes(1)));
@@ -40,7 +41,7 @@ class RateLimitServiceImplTest {
     @Test
     @DisplayName("Redis 故障: fail-open 放行")
     void failsOpenOnRedisError() {
-        when(redisService.incrementWithTtl(anyString(), any(Duration.class)))
+        when(redisService.slidingWindowAcquire(anyString(), anyInt(), any(Duration.class)))
                 .thenThrow(new IllegalStateException("redis down"));
 
         assertTrue(service.tryAcquire("rate:login:u1", 1, Duration.ofMinutes(1)));

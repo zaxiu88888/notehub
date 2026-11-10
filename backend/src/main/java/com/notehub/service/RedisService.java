@@ -34,8 +34,9 @@ public interface RedisService {
     boolean bitFieldIncrIfPresent(String key, long bitOffset, long delta);
 
     /**
-     * 原子自增并在首次写入时设置 TTL(限流固定窗口);
-     * 返回自增后的计数
+     * 滑动窗口限流: ZSET 记录窗口内请求, 原子清理过期成员并判断配额;
+     * 使用 Redis TIME 避免多实例时钟偏差
+     * @return true=放行
      */
-    long incrementWithTtl(String key, Duration ttl);
+    boolean slidingWindowAcquire(String key, int limit, Duration window);
 }

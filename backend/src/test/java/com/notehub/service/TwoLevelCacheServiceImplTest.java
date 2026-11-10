@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,6 +82,42 @@ class TwoLevelCacheServiceImplTest {
 
         assertEquals(List.of("new"), fresh);
         assertEquals(2, loads.get());
+    }
+
+    @Test
+    @DisplayName("击穿保护: 同一 key 并发未命中只回源一次")
+    void concurrentMissLoadsOnce() throws Exception {
+        when(redisService.get(anyString())).thenReturn(null);
+        AtomicInteger loads = new AtomicInteger();
+        int threads = 8;
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        for (int i = 0; i < threads; i++) {
+            pool.submit(() -> {
+                try {
+                    start.await();
+                    cache.get("questions", "hot", Duration.ofMinutes(2), type, () -> {
+                        loads.incrementAndGet();
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        return List.of("q1");
+                    });
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+        start.countDown();
+        done.await(5, TimeUnit.SECONDS);
+        pool.shutdownNow();
+
+        assertEquals(1, loads.get());
     }
 
     @Test

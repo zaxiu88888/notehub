@@ -286,22 +286,24 @@ frontend/src/
 多级缓存: TwoLevelCacheService
   key = cache:{domain}:v{version}:{suffix}
   L1 Caffeine(max 1000, 30s) → L2 Redis(2~5min) → DB loader
+  L1 用 Caffeine.get(key, loader) 原子回源: 同一 key 并发未命中只查一次库(防击穿)
   写操作 invalidate(domain): 版本号+1 + 本地全清; 旧 Redis key 由 TTL 过期
   已接入: 题库列表 / 分类树 / 热门标签; 单机版本号, 多实例 L1 最多滞后 30s
 
 限流: @RateLimit(limit, windowSeconds, key) + RateLimitAspect
   key = rate:{scope}:{userId | clientIp(X-Forwarded-For 优先)}
-  Redis Lua: INCR + 首次 PEXPIRE(原子, 防 key 永不过期)
+  Redis Lua + ZSET 滑动窗口: 删除窗口外成员 → ZCARD < limit 才写入; 用 Redis TIME 防时钟偏差
   超限 → 42901; Redis 故障 fail-open
 
 计数去重: note_daily_stats 主键(note_id, stat_date)
   点赞/取消赞、评论/删评、收藏/取消 → INSERT ... ON DUPLICATE KEY UPDATE GREATEST(x+delta,0)
   热度榜 week/month 改为 SUM 该表(一条聚合子查询); 历史数据由迁移回填
-  注: 当日增减为"净互动", 删旧评论会记在今天
+  取消互动按原始发生日回退(取消赞取 note_likes.created_at, 删评取评论时间, 取消收藏取条目时间)
 
 上传清理: ImageCleanupService
-  提取 Markdown/HTML 图片 → note/user 引用计数 → 无引用才删
+  即时清理: 提取 Markdown/HTML 图片 → note/user 引用计数 → 无引用才删
   笔记删除/编辑(提交后)、换头像即时清理; 每周一 03:30 扫描 24h 前孤儿文件
+  周任务一次取全量正文/头像在内存构建引用集合, 避免每文件两次全表 LIKE
 ```
 
 ## 8. 安全设计清单

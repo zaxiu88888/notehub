@@ -8,10 +8,22 @@
         VALUES (#{collectionId}, #{noteId})
     </insert>
 
+    <select id="select" resultType="com.notehub.model.entity.CollectionNote">
+        SELECT collection_id, note_id, created_at, updated_at
+        FROM collection_notes
+        WHERE collection_id = #{collectionId} AND note_id = #{noteId}
+    </select>
+
     <delete id="delete">
         DELETE FROM collection_notes
         WHERE collection_id = #{collectionId} AND note_id = #{noteId}
     </delete>
+
+    <select id="selectByCollection" resultType="com.notehub.model.entity.CollectionNote">
+        SELECT collection_id, note_id, created_at, updated_at
+        FROM collection_notes
+        WHERE collection_id = #{collectionId}
+    </select>
 
     <select id="selectNoteIdsByCollection" resultType="long">
         SELECT note_id FROM collection_notes

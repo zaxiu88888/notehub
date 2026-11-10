@@ -75,16 +75,20 @@ class ImageCleanupServiceImplTest {
     }
 
     @Test
-    @DisplayName("全量扫描: 删除无引用文件并返回数量")
+    @DisplayName("全量扫描: 一次构建引用集合, 删除无引用文件")
     void sweepOrphansCountsDeleted() {
         when(uploadService.listStoredUrls(any(Duration.class)))
-                .thenReturn(List.of("/images/used.png", "/images/orphan.png"));
-        when(noteMapper.countByContentContaining("/images/used.png")).thenReturn(1L);
+                .thenReturn(List.of("/images/used.png", "/images/avatar.png", "/images/orphan.png"));
+        when(noteMapper.selectAllContents())
+                .thenReturn(List.of("![x](/images/used.png)"));
+        when(userMapper.selectAllAvatarUrls())
+                .thenReturn(List.of("/images/avatar.png"));
 
         int deleted = service.sweepOrphans();
 
         assertEquals(1, deleted);
         verify(uploadService).deleteByUrl("/images/orphan.png");
         verify(uploadService, never()).deleteByUrl("/images/used.png");
+        verify(uploadService, never()).deleteByUrl("/images/avatar.png");
     }
 }

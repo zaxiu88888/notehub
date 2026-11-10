@@ -18,6 +18,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -82,16 +83,16 @@ public class CollectionServiceImpl implements CollectionService {
     public void deleteCollection(Long collectionId, Long userId) {
         requireOwnCollection(collectionId, userId);
         // 必须先取条目再删(顺序错误会导致收藏数永不递减)
-        List<Long> noteIds = collectionNoteMapper.selectNoteIdsByCollection(collectionId);
+        List<CollectionNote> entries = collectionNoteMapper.selectByCollection(collectionId);
         collectionNoteMapper.deleteByCollectionId(collectionId);
-        for (Long noteId : noteIds) {
-            if (!hasOtherCollectionNote(userId, noteId)) { // 该用户其他夹还有则不递减
-                noteMapper.adjustCollectCount(noteId, -1);
-                noteDailyStatService.recordCollect(noteId, -1);
+        for (CollectionNote entry : entries) {
+            if (!hasOtherCollectionNote(userId, entry.getNoteId())) { // 该用户其他夹还有则不递减
+                noteMapper.adjustCollectCount(entry.getNoteId(), -1);
+                noteDailyStatService.recordCollect(entry.getNoteId(), dateOf(entry), -1);
             }
         }
         collectionMapper.deleteById(collectionId);
-        log.info("[收藏夹] 删除(连带条目): collectionId={}, user={}, notes={}", collectionId, userId, noteIds.size());
+        log.info("[收藏夹] 删除(连带条目): collectionId={}, user={}, notes={}", collectionId, userId, entries.size());
     }
 
     /** 该用户的其它收藏夹是否也收了这篇笔记 */
@@ -132,11 +133,17 @@ public class CollectionServiceImpl implements CollectionService {
     @Transactional
     public void removeNote(Long userId, Long collectionId, Long noteId) {
         requireOwnCollection(collectionId, userId);
+        CollectionNote existing = collectionNoteMapper.select(collectionId, noteId);
         int deleted = collectionNoteMapper.delete(collectionId, noteId);
         if (deleted > 0 && !hasOtherCollectionNote(userId, noteId)) {
             noteMapper.adjustCollectCount(noteId, -1); // 用户其他夹还收着就不算取消收藏
-            noteDailyStatService.recordCollect(noteId, -1);
+            noteDailyStatService.recordCollect(noteId, dateOf(existing), -1);
         }
+    }
+
+    private LocalDate dateOf(CollectionNote entry) {
+        return entry == null || entry.getCreatedAt() == null
+                ? LocalDate.now() : entry.getCreatedAt().toLocalDate();
     }
 
     private Collection requireOwnCollection(Long collectionId, Long userId) {

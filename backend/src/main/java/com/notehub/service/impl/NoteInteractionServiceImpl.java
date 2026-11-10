@@ -19,6 +19,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 /**
  * 笔记互动: 原子计数 + 唯一约束防重 + 事件驱动消息(自赞自评不通知)
  */
@@ -69,10 +71,11 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
     @Transactional
     public void unlikeNote(Long noteId, Long userId) {
         requireNote(noteId);
+        NoteLike existing = noteLikeMapper.select(noteId, userId);
         int deleted = noteLikeMapper.delete(noteId, userId); // 幂等: 没赞过则无操作
         if (deleted > 0) {
             noteMapper.adjustLikeCount(noteId, -1);
-            noteDailyStatService.recordLike(noteId, -1);
+            noteDailyStatService.recordLike(noteId, dateOf(existing), -1);
         }
     }
 
@@ -150,7 +153,10 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
             commentMapper.softDeleteReplies(commentId);
         }
         noteMapper.adjustCommentCount(comment.getNoteId(), (int) -(1 + activeReplies));
-        noteDailyStatService.recordComment(comment.getNoteId(), (int) -(1 + activeReplies));
+        // 按评论发生日回退, 避免删旧评论时把今天的统计减成负
+        noteDailyStatService.recordComment(comment.getNoteId(),
+                comment.getCreatedAt() == null ? LocalDate.now() : comment.getCreatedAt().toLocalDate(),
+                (int) -(1 + activeReplies));
         if (comment.getParentId() != null) {
             commentMapper.adjustReplyCount(comment.getParentId(), -1);
         }
@@ -207,6 +213,11 @@ public class NoteInteractionServiceImpl implements NoteInteractionService {
             throw BusinessException.of(ErrorCode.FORBIDDEN, "只能操作自己的评论");
         }
         return comment;
+    }
+
+    private LocalDate dateOf(NoteLike like) {
+        return like == null || like.getCreatedAt() == null
+                ? LocalDate.now() : like.getCreatedAt().toLocalDate();
     }
 
     private int currentLikeCount(Long noteId) {

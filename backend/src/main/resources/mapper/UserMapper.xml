@@ -121,4 +121,9 @@
     <select id="countByAvatarUrl" resultType="long">
         SELECT COUNT(*) FROM users WHERE avatar_url = #{url}
     </select>
+
+    <!-- I5 上传清理: 周任务一次取全量头像 -->
+    <select id="selectAllAvatarUrls" resultType="string">
+        SELECT DISTINCT avatar_url FROM users WHERE avatar_url IS NOT NULL
+    </select>
 </mapper>

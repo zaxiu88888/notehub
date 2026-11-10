@@ -135,7 +135,7 @@ notehub/
 - [x] I2 数据可视化：GitHub 风格热力图（Redis 位图）、笔记热度榜、个人数据卡片、Markdown 导出
 - [x] I3 实时化：WebSocket(STOMP) 推送未读消息（替代 30s 轮询，JWT 握手鉴权）
 - [x] I4 标签体系：tags/question_tags/note_tags，题目/笔记双维度筛选（题目标签由考点同步）
-- [x] I5 深化：Caffeine+Redis 多级缓存、Redis 固定窗口限流、每日互动去重统计表、上传旧文件清理
+- [x] I5 深化：Caffeine+Redis 多级缓存（防击穿）、Redis 滑动窗口限流、每日互动去重统计表（按发生日回退）、上传旧文件清理
 - [ ] I6 拓展：AI 题解总结、打卡 streak
 
 ## 安全说明

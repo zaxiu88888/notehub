@@ -9,12 +9,16 @@ import com.notehub.mapper.NoteLikeMapper;
 import com.notehub.mapper.NoteMapper;
 import com.notehub.model.entity.Comment;
 import com.notehub.model.entity.Note;
+import com.notehub.model.entity.NoteLike;
 import com.notehub.service.impl.NoteInteractionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,6 +31,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class NoteInteractionServiceImplTest {
+
+    private static final LocalDate DAY = LocalDate.of(2026, 11, 9);
 
     private NoteMapper noteMapper;
     private NoteLikeMapper noteLikeMapper;
@@ -64,6 +70,7 @@ class NoteInteractionServiceImplTest {
         c.setAuthorId(authorId);
         c.setParentId(parentId);
         c.setIsDeleted(0);
+        c.setCreatedAt(DAY.atStartOfDay());
         return c;
     }
 
@@ -93,13 +100,18 @@ class NoteInteractionServiceImplTest {
     }
 
     @Test
-    @DisplayName("取消点赞: 赞过则计数-1; 没赞过幂等跳过")
+    @DisplayName("取消点赞: 按原始点赞日回退计数; 没赞过幂等跳过")
     void unlikeNoteIdempotent() {
         when(noteMapper.selectById(10L)).thenReturn(note(10L, 2L));
+        NoteLike like = new NoteLike();
+        like.setNoteId(10L);
+        like.setUserId(7L);
+        like.setCreatedAt(DAY.atStartOfDay());
+        when(noteLikeMapper.select(10L, 7L)).thenReturn(like);
         when(noteLikeMapper.delete(10L, 7L)).thenReturn(1);
         service.unlikeNote(10L, 7L);
         verify(noteMapper).adjustLikeCount(10L, -1);
-        verify(noteDailyStatService).recordLike(10L, -1);
+        verify(noteDailyStatService).recordLike(10L, DAY, -1);
 
         when(noteLikeMapper.delete(10L, 7L)).thenReturn(0);
         service.unlikeNote(10L, 7L);
@@ -172,6 +184,7 @@ class NoteInteractionServiceImplTest {
         service.deleteComment(400L, 7L);
 
         verify(noteMapper).adjustCommentCount(10L, -1);
+        verify(noteDailyStatService).recordComment(10L, DAY, -1);
         verify(commentMapper).adjustReplyCount(300L, -1);
     }
 
@@ -186,7 +199,7 @@ class NoteInteractionServiceImplTest {
 
         verify(commentMapper).softDeleteReplies(300L);
         verify(noteMapper).adjustCommentCount(10L, -3); // 1 条父 + 2 条回复
-        verify(noteDailyStatService).recordComment(10L, -3);
+        verify(noteDailyStatService).recordComment(10L, DAY, -3);
     }
 
     @Test

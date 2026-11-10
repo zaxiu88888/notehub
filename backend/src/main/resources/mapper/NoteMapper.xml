@@ -252,4 +252,9 @@
     <select id="countByContentContaining" resultType="long">
         SELECT COUNT(*) FROM notes WHERE content LIKE CONCAT('%', #{url}, '%')
     </select>
+
+    <!-- I5 上传清理: 周任务一次取全量正文, 在内存构建引用集合 -->
+    <select id="selectAllContents" resultType="string">
+        SELECT content FROM notes
+    </select>
 </mapper>
