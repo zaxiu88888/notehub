@@ -46,6 +46,10 @@ class CheckinServiceImplTest {
         assertEquals(2, vo.getLongestStreak());
         assertEquals(4, vo.getTotalDays());
         assertEquals(today.toString(), vo.getToday());
+        assertEquals(7, vo.getRecent().size());
+        assertTrue(vo.getRecent().get(6).isChecked());
+        assertTrue(vo.getRecent().get(5).isChecked());
+        assertFalse(vo.getRecent().get(4).isChecked());
     }
 
     @Test

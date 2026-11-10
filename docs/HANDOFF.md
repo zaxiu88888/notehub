@@ -28,9 +28,9 @@
 | I6 拓展（AI 题解总结、每日打卡 streak） | ✅ 本次完成 |
 
 ## 当前测试状态
-- 后端 `mvn test`：**194/194**
+- 后端 `mvn test`：**198/198**
 - 前端 `npm test`：**38/38**；`npm run build` 通过
-- 真实环境冒烟：I2–I6 全部通过（I6：AI 本地摘要/缓存/限流 42901、打卡幂等/连击/个人中心交互）
+- 真实环境冒烟：I2–I6 全部通过（I6：AI 本地摘要/缓存/并发合并/限流仅模型生成、打卡幂等/连击/近 7 天轨迹/个人中心交互）
 
 ## 下一步
 - 路线图 I1–I6 已全部完成
@@ -51,7 +51,7 @@
 8. I3：STOMP 只推未读计数不推消息体；JWT 放 CONNECT 头；只允许订阅 `/user/queue/**`；前端 5s 重连 + 重连后 HTTP 补拉
 9. I4：题目标签唯一来源是 `exam_point`（不新增管理入口）；笔记标签默认继承题目标签快照，作者可改；标签自动建词表
 10. I5：多级缓存版本号在单机内存，多实例 L1 最长滞后 30s；限流用 Redis ZSET 滑动窗口（Redis TIME），故障 fail-open；取消互动按原始发生日回退统计
-11. I6：AI 默认关闭（本地摘要降级），Key 只走环境变量；打卡为显式每日一次，连击最近一次今天/昨天才延续
+11. I6：AI 默认关闭（LocalSummarizer 本地降级），Key 只走环境变量；仅模型生成消耗 5/min（缓存/本地摘要不限流）；同笔记并发合并；打卡为显式每日一次，status 含近 7 天轨迹
 
 ## 工作纪律（每步必须）
 三道门 + 日志：改动 → commit；测试全绿；里程碑前 diff 自审并附清单；追加 docs/project-log.md；刷新本文件。详见 memory.md。
@@ -61,7 +61,7 @@
 - 本地配置：backend/src/main/resources/application-local.yaml（gitignore，含 DB 密码 + jwt.secret）
 - 后端：`cd backend && mvn spring-boot:run` → `curl http://localhost:8080/api/hello`
 - 前端：`cd frontend && npm run dev` → http://localhost:5173（Vite 代理 /api、/images 到 8080）
-- 测试：`mvn test`（194，无需 DB/Redis）；`npm test`（38）/ `npm run build`
+- 测试：`mvn test`（198，无需 DB/Redis）；`npm test`（38）/ `npm run build`
 - I4 标签：`GET /api/tags`；题目/笔记列表支持 `?tag=`
 - I5：热点列表走 Caffeine+Redis；滑动窗口限流 42901；`GET /notes/{id}/stats`
 - I6：`POST /notes/{id}/ai-summary`（默认本地摘要，配置 `AI_SUMMARY_API_KEY` 启用模型）；`POST /api/checkin`、`GET /api/checkin/status`

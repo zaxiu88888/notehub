@@ -244,12 +244,13 @@ data：`{ sent: true }`（dev 开关关闭时额外返回 devCode 便于联调�
 
 | 方法 | 路径 | 权限 | 说明 |
 |---|---|---|---|
-| POST | `/notes/{noteId}/ai-summary` | 🔒 | 生成/读取笔记总结；未配置模型或调用失败时 `source=local`；5 次/分钟 |
+| POST | `/notes/{noteId}/ai-summary` | 🔒 | 生成/读取笔记总结；未配置模型或调用失败时 `source=local`；仅模型生成 5 次/分钟 |
 | POST | `/checkin` | 🔒 | 今日打卡（主键幂等）；5 次/分钟；返回打卡状态 |
-| GET | `/checkin/status` | 🔒 | `{today,checkedInToday,currentStreak,longestStreak,totalDays}` |
+| GET | `/checkin/status` | 🔒 | `{today,checkedInToday,currentStreak,longestStreak,totalDays,recent:[{date,checked}]}`（近 7 天） |
 
 - AI 配置：`ai.summary.enabled=true` + `ai.summary.api-key`（建议环境变量 `AI_SUMMARY_API_KEY`）；OpenAI 兼容 `/chat/completions`
-- 总结缓存 `ai:summary:{noteId}` 6 小时，笔记编辑/删除后失效
+- 总结缓存：模型结果 6 小时、本地摘要 10 分钟；缓存命中和本地摘要不消耗限流；笔记编辑/删除后失效
+- 同一笔记并发未命中会合并为一次生成
 - 打卡连击：最近一次为今天/昨天才延续；同一天重复打卡幂等
 
 ---

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { App, Button, Card, Col, Empty, Row, Select, Skeleton, Space, Statistic, Typography } from 'antd';
+import { App, Button, Card, Col, Empty, Row, Select, Skeleton, Space, Statistic, Tooltip, Typography } from 'antd';
 import {
   CalendarOutlined,
   CommentOutlined,
@@ -122,6 +122,31 @@ export default function DataPanel() {
             </Button>
           </Col>
         </Row>
+        <div style={{ marginTop: 12 }}>
+          <Space size={8} wrap>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              近 7 天
+            </Typography.Text>
+            {checkinStatus?.recent?.map((day) => (
+              <Tooltip
+                key={day.date}
+                title={`${day.date} ${day.checked ? '已打卡' : '未打卡'}`}
+              >
+                <span
+                  aria-label={`${day.date} ${day.checked ? '已打卡' : '未打卡'}`}
+                  style={{
+                    display: 'inline-block',
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    background: day.checked ? '#52c41a' : '#f0f0f0',
+                    border: day.checked ? 'none' : '1px solid #d9d9d9',
+                  }}
+                />
+              </Tooltip>
+            ))}
+          </Space>
+        </div>
       </Card>
 
       <Row gutter={[16, 16]}>

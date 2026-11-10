@@ -130,12 +130,12 @@ public class NoteController {
         return ApiResponse.ok(analyticsService.getRanklist(period, limit));
     }
 
-    /** AI 题解总结: 未配置模型时返回本地摘要; 结果缓存 6h */
+    /** AI 题解总结: 缓存命中/本地摘要不限流, 仅模型生成 5 次/分 */
     @PostMapping("/notes/{noteId}/ai-summary")
     @NeedLogin
-    @RateLimit(key = "ai:summary", limit = 5)
     public ApiResponse<AiSummaryVO> aiSummary(@PathVariable Long noteId) {
-        return ApiResponse.ok(aiSummaryService.summarize(noteId));
+        return ApiResponse.ok(aiSummaryService.summarize(
+                noteId, requestContext.requireUserId()));
     }
 
     /** 笔记近 N 天互动趋势(每日点赞/评论/收藏, 主键去重) */

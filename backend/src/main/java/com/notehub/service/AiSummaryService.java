@@ -7,7 +7,7 @@ import com.notehub.model.vo.note.AiSummaryVO;
  */
 public interface AiSummaryService {
 
-    AiSummaryVO summarize(Long noteId);
+    AiSummaryVO summarize(Long noteId, Long userId);
 
     void evict(Long noteId);
 }

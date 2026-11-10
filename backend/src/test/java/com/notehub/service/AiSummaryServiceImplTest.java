@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -29,6 +30,7 @@ class AiSummaryServiceImplTest {
     private NoteMapper noteMapper;
     private RedisService redisService;
     private AiChatClient aiChatClient;
+    private RateLimitService rateLimitService;
     private ObjectMapper objectMapper;
     private AiSummaryServiceImpl service;
 
@@ -37,8 +39,14 @@ class AiSummaryServiceImplTest {
         noteMapper = mock(NoteMapper.class);
         redisService = mock(RedisService.class);
         aiChatClient = mock(AiChatClient.class);
+        rateLimitService = mock(RateLimitService.class);
         objectMapper = new ObjectMapper();
-        service = new AiSummaryServiceImpl(noteMapper, redisService, aiChatClient, objectMapper);
+        service = new AiSummaryServiceImpl(noteMapper, redisService, aiChatClient,
+                rateLimitService, objectMapper);
+    }
+
+    private AiSummaryVO callSummarize() {
+        return service.summarize(1L, 2L);
     }
 
     private Note note() {
@@ -56,11 +64,12 @@ class AiSummaryServiceImplTest {
         when(aiChatClient.isAvailable()).thenReturn(false);
         when(redisService.get("ai:summary:1")).thenReturn(null);
 
-        AiSummaryVO vo = service.summarize(1L);
+        AiSummaryVO vo = callSummarize();
 
         assertEquals("local", vo.getSource());
         assertTrue(vo.getSummary().contains("哈希表"));
         verify(aiChatClient, never()).complete(anyString(), anyString());
+        verify(rateLimitService, never()).tryAcquire(anyString(), anyInt(), any(Duration.class));
         verify(redisService).set(eq("ai:summary:1"), anyString(), any(Duration.class));
     }
 
@@ -75,11 +84,12 @@ class AiSummaryServiceImplTest {
         when(redisService.get("ai:summary:1"))
                 .thenReturn(objectMapper.writeValueAsString(cached));
 
-        AiSummaryVO vo = service.summarize(1L);
+        AiSummaryVO vo = callSummarize();
 
         assertEquals("缓存摘要", vo.getSummary());
         verify(aiChatClient, never()).isAvailable();
         verify(aiChatClient, never()).complete(anyString(), anyString());
+        verify(rateLimitService, never()).tryAcquire(anyString(), anyInt(), any(Duration.class));
     }
 
     @Test
@@ -88,12 +98,15 @@ class AiSummaryServiceImplTest {
         when(noteMapper.selectById(1L)).thenReturn(note());
         when(redisService.get("ai:summary:1")).thenReturn(null);
         when(aiChatClient.isAvailable()).thenReturn(true);
+        when(rateLimitService.tryAcquire(eq("rate:ai:summary:u2"), eq(5), any(Duration.class)))
+                .thenReturn(true);
         when(aiChatClient.complete(anyString(), anyString())).thenReturn("1. 哈希表\n2. O(n)");
 
-        AiSummaryVO vo = service.summarize(1L);
+        AiSummaryVO vo = callSummarize();
 
         assertEquals("ai", vo.getSource());
         assertEquals("1. 哈希表\n2. O(n)", vo.getSummary());
+        verify(rateLimitService).tryAcquire(eq("rate:ai:summary:u2"), eq(5), any(Duration.class));
     }
 
     @Test
@@ -102,13 +115,51 @@ class AiSummaryServiceImplTest {
         when(noteMapper.selectById(1L)).thenReturn(note());
         when(redisService.get("ai:summary:1")).thenReturn(null);
         when(aiChatClient.isAvailable()).thenReturn(true);
+        when(rateLimitService.tryAcquire(anyString(), anyInt(), any(Duration.class)))
+                .thenReturn(true);
         when(aiChatClient.complete(anyString(), anyString()))
                 .thenThrow(new IllegalStateException("timeout"));
 
-        AiSummaryVO vo = service.summarize(1L);
+        AiSummaryVO vo = callSummarize();
 
         assertEquals("local", vo.getSource());
         assertTrue(vo.getSummary().contains("哈希表"));
+    }
+
+    @Test
+    @DisplayName("模型配额用尽: 42901, 不调用模型")
+    void aiRateLimited() {
+        when(noteMapper.selectById(1L)).thenReturn(note());
+        when(redisService.get("ai:summary:1")).thenReturn(null);
+        when(aiChatClient.isAvailable()).thenReturn(true);
+        when(rateLimitService.tryAcquire(anyString(), anyInt(), any(Duration.class)))
+                .thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class, this::callSummarize);
+
+        assertEquals(ErrorCode.TOO_MANY_REQUESTS, e.getErrorCode());
+        verify(aiChatClient, never()).complete(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("本地缓存但模型已可用: 重新生成升级")
+    void localCacheUpgradesWhenAiAvailable() throws Exception {
+        AiSummaryVO cached = new AiSummaryVO();
+        cached.setNoteId(1L);
+        cached.setSummary("旧本地摘要");
+        cached.setSource("local");
+        when(noteMapper.selectById(1L)).thenReturn(note());
+        when(redisService.get("ai:summary:1"))
+                .thenReturn(objectMapper.writeValueAsString(cached));
+        when(aiChatClient.isAvailable()).thenReturn(true);
+        when(rateLimitService.tryAcquire(anyString(), anyInt(), any(Duration.class)))
+                .thenReturn(true);
+        when(aiChatClient.complete(anyString(), anyString())).thenReturn("新 AI 摘要");
+
+        AiSummaryVO vo = callSummarize();
+
+        assertEquals("ai", vo.getSource());
+        assertEquals("新 AI 摘要", vo.getSummary());
     }
 
     @Test
@@ -116,7 +167,7 @@ class AiSummaryServiceImplTest {
     void notFoundAndEvict() {
         when(noteMapper.selectById(404L)).thenReturn(null);
         BusinessException e = assertThrows(BusinessException.class,
-                () -> service.summarize(404L));
+                () -> service.summarize(404L, 2L));
         assertEquals(ErrorCode.NOT_FOUND, e.getErrorCode());
 
         service.evict(1L);

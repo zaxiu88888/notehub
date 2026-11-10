@@ -269,13 +269,15 @@ frontend/src/
 ## 5.11 AI 总结与打卡（I6）
 
 ```
-AI 总结: POST /notes/{id}/ai-summary (登录, 5/min)
-  缓存 ai:summary:{noteId} TTL 6h; 笔记编辑/删除后 afterCommit evict
+AI 总结: POST /notes/{id}/ai-summary (登录)
+  缓存 ai:summary:{noteId}: AI 结果 6h / 本地摘要 10min; 笔记编辑/删除后 afterCommit evict
+  仅真正调用模型时消耗 5/min 配额; 缓存命中/本地摘要不限流
+  同一笔记并发未命中用内存锁合并, 只生成一次
   配置: ai.summary.enabled + api-key(环境变量 AI_SUMMARY_API_KEY) → OpenAI 兼容 /chat/completions
-  未配置/调用异常 → MarkdownUtils 本地摘要(source=local), 不影响主流程
+  未配置/调用异常 → LocalSummarizer 抽取式摘要(source=local), 不影响主流程
 打卡: user_checkins 主键(user_id, checkin_date) 去重
   POST /api/checkin 幂等; GET /api/checkin/status
-  连击计算复用 StreakUtils(最近一次今天/昨天才延续), 返回当前/最长/累计天数
+  连击计算复用 StreakUtils; 返回当前/最长/累计 + 近 7 天轨迹(recent)
 ```
 
 > AI Key 只走环境变量/local 配置，不进仓库；默认关闭，开发环境走本地摘要。

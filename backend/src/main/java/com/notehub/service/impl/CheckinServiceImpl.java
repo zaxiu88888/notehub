@@ -7,7 +7,10 @@ import com.notehub.utils.StreakUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class CheckinServiceImpl implements CheckinService {
@@ -35,6 +38,14 @@ public class CheckinServiceImpl implements CheckinService {
         vo.setCurrentStreak(StreakUtils.currentStreak(dates));
         vo.setLongestStreak(StreakUtils.longestStreak(dates));
         vo.setTotalDays(dates.size());
+
+        Set<LocalDate> checked = new HashSet<>(dates);
+        List<CheckinStatusVO.Day> recent = new ArrayList<>(7);
+        for (int i = 6; i >= 0; i--) {
+            LocalDate day = today.minusDays(i);
+            recent.add(new CheckinStatusVO.Day(day.toString(), checked.contains(day)));
+        }
+        vo.setRecent(recent);
         return vo;
     }
 }

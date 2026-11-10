@@ -45,6 +45,10 @@ describe('DataPanel', () => {
       currentStreak: 3,
       longestStreak: 7,
       totalDays: 10,
+      recent: [
+        { date: `${year}-01-01`, checked: true },
+        { date: `${year}-01-02`, checked: false },
+      ],
     });
   });
 
@@ -68,6 +72,8 @@ describe('DataPanel', () => {
     expect(await screen.findByText(/全年 12 篇 · 活跃 1 天 · 单日最多 2 篇/)).toBeInTheDocument();
     expect(screen.getByText('连续打卡')).toBeInTheDocument();
     expect(screen.getByText('今日打卡')).toBeInTheDocument();
+    expect(screen.getByText('近 7 天')).toBeInTheDocument();
+    expect(screen.getByLabelText(`${new Date().getFullYear()}-01-01 已打卡`)).toBeInTheDocument();
   });
 
   it('点击打卡: 调用接口并切换为已打卡', async () => {
@@ -77,6 +83,7 @@ describe('DataPanel', () => {
       currentStreak: 4,
       longestStreak: 7,
       totalDays: 11,
+      recent: [{ date: '2026-01-02', checked: true }],
     });
     const user = userEvent.setup();
     renderPanel();
