@@ -41,4 +41,13 @@ class SearchUtilsTest {
         String longKeyword = "动态规划滑动窗口二分查找哈希表二叉树".repeat(10);
         assertTrue(SearchUtils.preprocessKeyword(longKeyword).length() <= 64);
     }
+
+    @Test
+    @DisplayName("布尔查询: 每个 token 加引号, 过滤跨词 bigram 噪声")
+    void booleanQueryQuotesEachToken() {
+        assertEquals("\"哈希表\" \"数组\"", SearchUtils.toBooleanQuery("哈希表 数组"));
+        assertEquals("\"gtmllind\"", SearchUtils.toBooleanQuery("gtmllind"));
+        assertEquals("", SearchUtils.toBooleanQuery(" "));
+        assertEquals("\"ab\" \"cd\"", SearchUtils.toBooleanQuery("ab\" cd"));
+    }
 }

@@ -64,13 +64,14 @@ public class SearchServiceImpl implements SearchService {
         if (processed.isEmpty()) {
             return PageVO.of(List.of(), current, size, 0);
         }
+        String query = SearchUtils.toBooleanQuery(processed);
 
         String key = cacheKey(processed, current, size);
         CachePayload payload = readCache(key);
         if (payload == null) {
-            long total = noteMapper.countByKeyword(processed);
+            long total = noteMapper.countByKeyword(query);
             List<Long> ids = total == 0 ? List.of()
-                    : noteMapper.searchByKeyword(processed, PageUtils.offset(current, size), size)
+                    : noteMapper.searchByKeyword(query, PageUtils.offset(current, size), size)
                             .stream().map(Note::getNoteId).toList();
             payload = new CachePayload(ids, total);
             writeCache(key, payload);

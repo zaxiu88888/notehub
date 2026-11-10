@@ -156,14 +156,14 @@
         FROM notes n
         JOIN users u ON n.author_id = u.user_id
         JOIN questions q ON n.question_id = q.question_id
-        WHERE MATCH(n.search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
-        ORDER BY MATCH(n.search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE) DESC, n.note_id DESC
+        WHERE MATCH(n.search_vector) AGAINST(#{keyword} IN BOOLEAN MODE)
+        ORDER BY MATCH(n.search_vector) AGAINST(#{keyword} IN BOOLEAN MODE) DESC, n.note_id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByKeyword" resultType="long">
         SELECT COUNT(*) FROM notes
-        WHERE MATCH(search_vector) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
+        WHERE MATCH(search_vector) AGAINST(#{keyword} IN BOOLEAN MODE)
     </select>
 
     <!-- ==================== I2 数据可视化 ==================== -->
